@@ -1,7 +1,14 @@
-import { app, BrowserWindow, shell } from 'electron'
+import { app, BrowserWindow, shell, ipcMain } from 'electron'
 import path from 'path'
+import { checkOllamaStatus, listOllamaModels, startOllama, pullModel, streamChat } from './ollama'
 
 const isDev = !app.isPackaged
+
+const devOverrides = {
+  skipOllama: process.env.ORBIT_SKIP_OLLAMA === 'true',
+  skipModels: process.env.ORBIT_SKIP_MODELS === 'true',
+  fresh: process.env.ORBIT_FRESH === 'true',
+}
 
 let mainWindow: BrowserWindow | null = null
 
@@ -45,7 +52,30 @@ function createWindow() {
   }
 }
 
-app.whenReady().then(createWindow)
+app.whenReady().then(() => {
+  createWindow()
+
+  // Ollama IPC handlers
+  ipcMain.handle('ollama:check-status', () => {
+    if (devOverrides.fresh || devOverrides.skipOllama) return 'not-installed'
+    return checkOllamaStatus()
+  })
+
+  ipcMain.handle('ollama:list-models', async () => {
+    if (devOverrides.fresh || devOverrides.skipModels) return { models: [] }
+    return listOllamaModels()
+  })
+
+  ipcMain.handle('ollama:start', () => startOllama())
+
+  ipcMain.handle('ollama:pull-model', (_event, modelName: string) => {
+    if (mainWindow) return pullModel(modelName, mainWindow)
+  })
+
+  ipcMain.handle('ollama:chat', (_event, { model, messages, conversationId }) => {
+    if (mainWindow) return streamChat(model, messages, mainWindow, conversationId)
+  })
+})
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()
