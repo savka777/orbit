@@ -1,6 +1,7 @@
 import { app, BrowserWindow, shell, ipcMain } from 'electron'
 import path from 'path'
 import { checkOllamaStatus, listOllamaModels, startOllama, pullModel, streamChat } from './ollama'
+import { scanHardware, recommendModels, stopLLMFit } from './llmfit'
 
 const isDev = !app.isPackaged
 
@@ -75,6 +76,14 @@ app.whenReady().then(() => {
   ipcMain.handle('ollama:chat', (_event, { model, messages, conversationId }) => {
     if (mainWindow) return streamChat(model, messages, mainWindow, conversationId)
   })
+
+  // LLMFit IPC handlers
+  ipcMain.handle('llmfit:scan-hardware', () => scanHardware())
+  ipcMain.handle('llmfit:recommend-models', () => recommendModels())
+})
+
+app.on('before-quit', () => {
+  stopLLMFit()
 })
 
 app.on('window-all-closed', () => {
