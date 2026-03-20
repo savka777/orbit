@@ -312,7 +312,7 @@ export function createMockOrbit(): typeof window.orbit {
 
 ## Prerequisite: Extract Types from mock.ts
 
-Before W3-W6, extract `Model`, `Message`, `Conversation`, `HardwareSpec`, `MCPTool` type definitions from `src/data/mock.ts` into `src/types/models.ts`. The mock data file will still exist (for reference/fallback) but types should be importable independently. This is a small task that can be done as part of W7 or W1/W2 phase.
+Before W3-W6, extract `Model`, `Message`, `Conversation`, `HardwareSpec`, `MCPTool` type definitions from `src/data/mock.ts` into `src/types/models.ts`. The mock data file will still exist (for reference/fallback) but types should be importable independently. During extraction, widen `Model.compatibility` from `'full' | 'partial' | 'incompatible'` to `'full' | 'partial' | 'incompatible' | 'unknown'` to support the adapter's fallback value for models without LLMFit scoring data. This is a small task that can be done as part of W7 or W1/W2 phase.
 
 ## Agent Team Parallelization Plan
 
