@@ -62,24 +62,33 @@ async function waitForServer(port: number, maxAttempts = 20): Promise<void> {
   throw new Error('LLMFit server did not start in time')
 }
 
+let startupPromise: Promise<number> | null = null
+
 export async function startLLMFit(): Promise<number> {
   if (llmfitProcess && currentPort) return currentPort
+  if (startupPromise) return startupPromise
 
-  const port = await findAvailablePort()
-  const llmfitPath = getLLMFitPath()
+  startupPromise = (async () => {
+    const port = await findAvailablePort()
+    const llmfitPath = getLLMFitPath()
 
-  llmfitProcess = spawn(llmfitPath, ['serve', '--port', String(port)], {
-    stdio: 'ignore',
+    llmfitProcess = spawn(llmfitPath, ['serve', '--port', String(port)], {
+      stdio: 'ignore',
+    })
+
+    llmfitProcess.on('exit', () => {
+      llmfitProcess = null
+      currentPort = null
+    })
+
+    await waitForServer(port)
+    currentPort = port
+    return port
+  })().finally(() => {
+    startupPromise = null
   })
 
-  llmfitProcess.on('exit', () => {
-    llmfitProcess = null
-    currentPort = null
-  })
-
-  await waitForServer(port)
-  currentPort = port
-  return port
+  return startupPromise
 }
 
 export function stopLLMFit(): void {
@@ -92,20 +101,12 @@ export function stopLLMFit(): void {
 
 export async function scanHardware(): Promise<unknown> {
   const port = await startLLMFit()
-  try {
-    const response = await httpGet(port, '/api/system')
-    return JSON.parse(response)
-  } finally {
-    stopLLMFit()
-  }
+  const response = await httpGet(port, '/api/system')
+  return JSON.parse(response)
 }
 
 export async function recommendModels(): Promise<unknown> {
   const port = await startLLMFit()
-  try {
-    const response = await httpGet(port, '/api/fit')
-    return JSON.parse(response)
-  } finally {
-    stopLLMFit()
-  }
+  const response = await httpGet(port, '/api/fit')
+  return JSON.parse(response)
 }
