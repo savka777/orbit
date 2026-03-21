@@ -13,16 +13,19 @@ contextBridge.exposeInMainWorld('orbit', {
 
   // Event listeners for streaming
   onPullProgress: (callback: (data: unknown) => void) => {
-    ipcRenderer.on('ollama:pull-progress', (_event, data) => callback(data))
-    return () => ipcRenderer.removeAllListeners('ollama:pull-progress')
+    const handler = (_event: Electron.IpcRendererEvent, data: unknown) => callback(data)
+    ipcRenderer.on('ollama:pull-progress', handler)
+    return () => { ipcRenderer.removeListener('ollama:pull-progress', handler) }
   },
   onChatChunk: (callback: (data: unknown) => void) => {
-    ipcRenderer.on('ollama:chat-chunk', (_event, data) => callback(data))
-    return () => ipcRenderer.removeAllListeners('ollama:chat-chunk')
+    const handler = (_event: Electron.IpcRendererEvent, data: unknown) => callback(data)
+    ipcRenderer.on('ollama:chat-chunk', handler)
+    return () => { ipcRenderer.removeListener('ollama:chat-chunk', handler) }
   },
   onChatDone: (callback: (data: unknown) => void) => {
-    ipcRenderer.on('ollama:chat-done', (_event, data) => callback(data))
-    return () => ipcRenderer.removeAllListeners('ollama:chat-done')
+    const handler = (_event: Electron.IpcRendererEvent, data: unknown) => callback(data)
+    ipcRenderer.on('ollama:chat-done', handler)
+    return () => { ipcRenderer.removeListener('ollama:chat-done', handler) }
   },
 
   // LLMFit
