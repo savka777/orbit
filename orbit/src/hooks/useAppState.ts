@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react'
-import type { Conversation, Message, Model, MCPTool } from '../data/mock'
+import type { Conversation, Message, Model, MCPTool } from '../types/models'
 import { conversations as initialConversations, models as initialModels, mcpTools as initialTools, aiResponses } from '../data/mock'
 
 export type Screen = 'welcome' | 'chat' | 'hardware' | 'models' | 'tools'

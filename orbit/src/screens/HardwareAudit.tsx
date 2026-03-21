@@ -41,6 +41,10 @@ const compatibilityConfig = {
     label: 'Incompatible',
     classes: 'bg-white/5 text-white/34',
   },
+  unknown: {
+    label: 'Unknown',
+    classes: 'bg-white/5 text-white/34',
+  },
 }
 
 export default function HardwareAudit({ onNavigateToModels }: HardwareAuditProps) {
@@ -71,7 +75,7 @@ export default function HardwareAudit({ onNavigateToModels }: HardwareAuditProps
   const fullSpeedCount = models.filter((m) => m.compatibility === 'full').length
 
   return (
-    <div className="h-full min-h-0 overflow-y-auto px-6 pt-2 pb-6">
+    <div className="h-full min-h-0 overflow-y-auto px-6 pb-6">
       <AnimatePresence mode="wait">
         {scanState === 'idle' && (
           <motion.div
