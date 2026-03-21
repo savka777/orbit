@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Sparkles } from 'lucide-react'
-import type { Model } from '../data/mock'
+import type { Model } from '../types/models'
 import ModelCard from '../components/ModelCard'
 
 type Filter = 'all' | 'chat' | 'code' | 'creative' | 'small' | 'medium' | 'large'
@@ -9,6 +9,7 @@ type ModelLibraryProps = {
   models: Model[]
   downloadProgress: Record<string, number>
   onDownload: (modelId: string) => void
+  isLoading?: boolean
 }
 
 const filters: { key: Filter; label: string }[] = [
@@ -50,8 +51,16 @@ function matchesFilter(model: Model, filter: Filter): boolean {
   }
 }
 
-export default function ModelLibrary({ models, downloadProgress, onDownload }: ModelLibraryProps) {
+export default function ModelLibrary({ models, downloadProgress, onDownload, isLoading }: ModelLibraryProps) {
   const [activeFilter, setActiveFilter] = useState<Filter>('all')
+
+  if (isLoading) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <p className="text-[13px] text-white/38">Loading models...</p>
+      </div>
+    )
+  }
 
   const featuredModel = models.find((m) => m.featured)
   const filteredModels = models
@@ -59,7 +68,7 @@ export default function ModelLibrary({ models, downloadProgress, onDownload }: M
     .filter((m) => matchesFilter(m, activeFilter))
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-y-auto px-6 pt-2 pb-6">
+    <div className="flex h-full min-h-0 flex-col overflow-y-auto px-6 pb-6">
       <div className="mx-auto w-full max-w-[960px]">
         <div className="mb-5 shrink-0">
           <h1 className="text-[14px] font-semibold text-stone-50">Model Library</h1>
