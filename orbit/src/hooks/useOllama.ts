@@ -48,7 +48,7 @@ export function useOllama(scoredModels?: ScoredModel[]) {
   }, [refreshModels])
 
   useEffect(() => {
-    if (!hasOrbit()) return
+    if (!hasOrbit() || typeof window.orbit.onPullProgress !== 'function') return
     const cleanup = window.orbit.onPullProgress((data) => {
       const typed = data as { modelName: string; progress: { status: string; total?: number; completed?: number } }
       if (typed.progress.status === 'success') {
