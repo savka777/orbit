@@ -2,6 +2,7 @@ import { useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAppState } from './hooks/useAppState'
 import { useKeyboardNav } from './hooks/useKeyboardNav'
+import { useOllama } from './hooks/useOllama'
 import Sidebar from './components/Sidebar'
 import GrainFilter from './components/GrainFilter'
 import Welcome from './screens/Welcome'
@@ -27,21 +28,26 @@ export default function App() {
     conversations,
     activeConversation,
     activeConversationId,
-    models,
-    selectedModel,
-    downloadedModels,
+    selectedModelId,
     mcpTools,
     sidebarCollapsed,
-    downloadProgress,
     navigateTo,
     openConversation,
     startNewChat,
     sendMessage,
+    addMessageToConversation,
     setSelectedModelId,
     toggleToolConnection,
-    startModelDownload,
     setSidebarCollapsed,
   } = useAppState()
+
+  const ollama = useOllama()
+  const selectedModel = ollama.models.find(m => m.id === selectedModelId) ?? ollama.models[0] ?? { id: '', name: 'No model', parameterCount: '' }
+  const downloadedModels = ollama.models.filter(m => m.downloaded)
+
+  const handleSendMessage = useCallback((content: string) => {
+    sendMessage(content, selectedModel.name)
+  }, [sendMessage, selectedModel.name])
 
   const toggleSidebar = useCallback(() => {
     setSidebarCollapsed((prev: boolean) => !prev)
@@ -58,11 +64,11 @@ export default function App() {
       case 'welcome':
         return (
           <Welcome
-            onSend={sendMessage}
+            onSend={handleSendMessage}
             selectedModel={selectedModel}
             downloadedModels={downloadedModels}
             onSelectModel={setSelectedModelId}
-            onSuggestionClick={sendMessage}
+            onSuggestionClick={handleSendMessage}
           />
         )
       case 'chat':
@@ -70,7 +76,8 @@ export default function App() {
         return (
           <Chat
             conversation={activeConversation}
-            onSend={sendMessage}
+            onSendMessage={handleSendMessage}
+            onAddMessage={addMessageToConversation}
             selectedModel={selectedModel}
             downloadedModels={downloadedModels}
             onSelectModel={setSelectedModelId}
@@ -85,9 +92,10 @@ export default function App() {
       case 'models':
         return (
           <ModelLibrary
-            models={models}
-            downloadProgress={downloadProgress}
-            onDownload={startModelDownload}
+            models={ollama.models}
+            downloadProgress={ollama.downloadProgress}
+            onDownload={ollama.pullModel}
+            isLoading={ollama.isLoading}
           />
         )
       case 'tools':
@@ -130,7 +138,7 @@ export default function App() {
               animate="animate"
               exit="exit"
               transition={pageTransition}
-              className="relative z-10 flex flex-col flex-1 min-h-0 overflow-hidden pt-8"
+              className="relative z-10 flex flex-col flex-1 min-h-0 overflow-hidden pt-10"
             >
               {renderScreen()}
             </motion.div>
