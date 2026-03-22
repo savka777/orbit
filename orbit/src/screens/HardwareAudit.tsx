@@ -2,7 +2,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { Cpu, MemoryStick, Monitor, Check, AlertTriangle } from 'lucide-react'
 import OrbitPulse from '../components/OrbitPulse'
 import { useLLMFit } from '../hooks/useLLMFit'
-import type { SystemProfile, ScoredModel } from '../types/llmfit'
+import type { SystemProfile } from '../types/llmfit'
 import type { HardwareSpec } from '../types/models'
 
 type HardwareAuditProps = {
