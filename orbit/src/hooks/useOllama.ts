@@ -4,17 +4,20 @@ import type { ScoredModel } from '../types/llmfit'
 import type { Model } from '../types/models'
 import { mapOllamaModel } from '../utils/modelAdapter'
 
+function hasOrbit() { return typeof window !== 'undefined' && !!window.orbit }
+
 export function useOllama(scoredModels?: ScoredModel[]) {
   const [status, setStatus] = useState<OllamaStatus>('installed-not-running')
   const [models, setModels] = useState<Model[]>([])
   const [downloadProgress, setDownloadProgress] = useState<Record<string, number>>({})
-  const [isLoading, setIsLoading] = useState(true)
+  const [isLoading, setIsLoading] = useState(hasOrbit())
   const [error, setError] = useState<Error | null>(null)
 
   const scoredModelsRef = useRef(scoredModels)
   scoredModelsRef.current = scoredModels
 
   const refreshModels = useCallback(async () => {
+    if (!hasOrbit()) return
     try {
       const response = await window.orbit.listOllamaModels()
       const mapped = response.models.map((m) => mapOllamaModel(m, scoredModelsRef.current))
@@ -25,6 +28,7 @@ export function useOllama(scoredModels?: ScoredModel[]) {
   }, [])
 
   useEffect(() => {
+    if (!hasOrbit()) return
     let cancelled = false
     async function init() {
       setIsLoading(true)
@@ -44,6 +48,7 @@ export function useOllama(scoredModels?: ScoredModel[]) {
   }, [refreshModels])
 
   useEffect(() => {
+    if (!hasOrbit()) return
     const cleanup = window.orbit.onPullProgress((data) => {
       const typed = data as { modelName: string; progress: { status: string; total?: number; completed?: number } }
       if (typed.progress.status === 'success') {
@@ -60,6 +65,7 @@ export function useOllama(scoredModels?: ScoredModel[]) {
   }, [refreshModels])
 
   const pullModel = useCallback((name: string) => {
+    if (!hasOrbit()) return
     window.orbit.pullModel(name)
   }, [])
 

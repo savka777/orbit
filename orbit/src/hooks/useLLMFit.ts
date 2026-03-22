@@ -1,6 +1,8 @@
 import { useState, useCallback } from 'react'
 import type { SystemProfile, ScoredModel } from '../types/llmfit'
 
+function hasOrbit() { return typeof window !== 'undefined' && !!window.orbit }
+
 export function useLLMFit() {
   const [systemProfile, setSystemProfile] = useState<SystemProfile | null>(null)
   const [scoredModels, setScoredModels] = useState<ScoredModel[]>([])
@@ -8,6 +10,7 @@ export function useLLMFit() {
   const [error, setError] = useState<Error | null>(null)
 
   const scan = useCallback(async () => {
+    if (!hasOrbit()) return
     setError(null)
     setIsScanning(true)
     try {
@@ -21,6 +24,7 @@ export function useLLMFit() {
   }, [])
 
   const recommend = useCallback(async () => {
+    if (!hasOrbit()) return
     setError(null)
     setIsScanning(true)
     try {

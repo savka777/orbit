@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import type { OllamaChatMessage } from '../types/ollama'
 
+function hasOrbit() { return typeof window !== 'undefined' && !!window.orbit }
+
 export type UseChatOptions = {
   model: string
   conversationId: string
@@ -19,6 +21,7 @@ export function useChat({ model, conversationId, onStreamComplete }: UseChatOpti
   onStreamCompleteRef.current = onStreamComplete
 
   useEffect(() => {
+    if (!hasOrbit()) return
     const gen = ++generationRef.current
     const cleanupChunk = window.orbit.onChatChunk((data) => {
       if (gen !== generationRef.current) return
@@ -42,7 +45,7 @@ export function useChat({ model, conversationId, onStreamComplete }: UseChatOpti
 
   const sendMessage = useCallback(
     async (text: string, history: OllamaChatMessage[]) => {
-      if (isStreamingRef.current) return
+      if (isStreamingRef.current || !hasOrbit()) return
       setError(null)
       setIsStreaming(true)
       isStreamingRef.current = true
