@@ -1,8 +1,7 @@
 const { app, BrowserWindow, shell, ipcMain } = require('electron')
 const path = require('path')
-const { exec, spawn } = require('child_process')
+const { exec, execFile } = require('child_process')
 const http = require('http')
-const net = require('net')
 
 const isDev = !app.isPackaged
 
@@ -134,96 +133,97 @@ function streamChat(model, messages, win, conversationId) {
   })
 }
 
-// ─── LLMFit ────────────────────────────────────────────────
-
-let llmfitProcess = null
-let currentPort = null
-let startupPromise = null
-
-function findAvailablePort() {
-  return new Promise((resolve, reject) => {
-    const server = net.createServer()
-    server.listen(0, () => {
-      const addr = server.address()
-      if (addr && typeof addr !== 'string') {
-        const port = addr.port
-        server.close(() => resolve(port))
-      } else {
-        reject(new Error('Could not find available port'))
-      }
-    })
-    server.on('error', reject)
-  })
-}
+// ─── LLMFit (CLI-based) ────────────────────────────────────
 
 function getLLMFitPath() {
   if (isDev) return process.env.LLMFIT_PATH || 'llmfit'
   return path.join(process.resourcesPath, 'bin', 'llmfit')
 }
 
-function httpGet(port, requestPath) {
+function runLLMFit(args) {
   return new Promise((resolve, reject) => {
-    const req = http.request(
-      { hostname: '127.0.0.1', port, path: requestPath, method: 'GET' },
-      (res) => {
-        let data = ''
-        res.on('data', (chunk) => (data += chunk))
-        res.on('end', () => resolve(data))
-      }
-    )
-    req.on('error', reject)
-    req.setTimeout(10000, () => { req.destroy(); reject(new Error('LLMFit request timed out')) })
-    req.end()
+    execFile(getLLMFitPath(), args, { timeout: 30000 }, (error, stdout, stderr) => {
+      if (error) { reject(new Error(stderr || error.message)); return }
+      resolve(stdout)
+    })
   })
 }
 
-async function waitForServer(port, maxAttempts = 20) {
-  for (let i = 0; i < maxAttempts; i++) {
-    try {
-      await httpGet(port, '/health')
-      return
-    } catch {
-      await new Promise((r) => setTimeout(r, 500))
+function parseSystemOutput(output) {
+  const lines = output.split('\n')
+  const system = {
+    cpu_name: '', cpu_cores: 0, total_ram_gb: 0, available_ram_gb: 0,
+    has_gpu: false, gpu_name: null, gpu_vram_gb: null, gpu_count: 0,
+    unified_memory: false, backend: '',
+  }
+  for (const line of lines) {
+    const t = line.trim()
+    if (t.startsWith('CPU:')) {
+      system.cpu_name = t.slice(4).trim()
+      const m = t.match(/\((\d+)\s*cores?\)/)
+      if (m) system.cpu_cores = parseInt(m[1], 10)
+    } else if (t.startsWith('Total RAM:')) {
+      const m = t.match(/([\d.]+)\s*GB/)
+      if (m) system.total_ram_gb = parseFloat(m[1])
+    } else if (t.startsWith('Available RAM:')) {
+      const m = t.match(/([\d.]+)\s*GB/)
+      if (m) system.available_ram_gb = parseFloat(m[1])
+    } else if (t.startsWith('Backend:')) {
+      system.backend = t.slice(8).trim()
+    } else if (t.startsWith('GPU:')) {
+      system.has_gpu = true; system.gpu_count = 1
+      const gpuStr = t.slice(4).trim()
+      system.gpu_name = gpuStr.split('(')[0].trim()
+      if (gpuStr.includes('unified memory')) system.unified_memory = true
+      const vm = gpuStr.match(/([\d.]+)\s*GB\s*shared/)
+      if (vm) system.gpu_vram_gb = parseFloat(vm[1])
     }
   }
-  throw new Error('LLMFit server did not start in time')
+  return system
 }
 
-async function startLLMFit() {
-  if (llmfitProcess && currentPort) return currentPort
-  if (startupPromise) return startupPromise
-
-  startupPromise = (async () => {
-    const port = await findAvailablePort()
-    const llmfitPath = getLLMFitPath()
-    llmfitProcess = spawn(llmfitPath, ['serve', '--port', String(port)], { stdio: 'ignore' })
-    llmfitProcess.on('exit', () => { llmfitProcess = null; currentPort = null })
-    await waitForServer(port)
-    currentPort = port
-    return port
-  })().finally(() => { startupPromise = null })
-
-  return startupPromise
-}
-
-function stopLLMFit() {
-  if (llmfitProcess) {
-    llmfitProcess.kill()
-    llmfitProcess = null
-    currentPort = null
+function parseFitOutput(output) {
+  const system = parseSystemOutput(output)
+  const models = []
+  const lines = output.split('\n')
+  for (const line of lines) {
+    if (!line.includes('│') || line.includes('──') || line.includes('Status')) continue
+    const cells = line.split('│').map(c => c.trim()).filter(Boolean)
+    if (cells.length < 10) continue
+    const statusRaw = cells[0]
+    let fit_level = 'marginal'
+    if (statusRaw.includes('Perfect')) fit_level = 'perfect'
+    else if (statusRaw.includes('Good')) fit_level = 'good'
+    else if (statusRaw.includes('Marginal')) fit_level = 'marginal'
+    else if (statusRaw.includes('Too Tight') || statusRaw.includes('tight')) fit_level = 'too_tight'
+    const score = parseInt(cells[4], 10) || 0
+    const tps = parseFloat(cells[5]) || 0
+    const memPct = parseFloat(cells[9]) || 0
+    const paramMatch = cells[3].match(/([\d.]+)B/)
+    const ctxMatch = (cells[10] || '4k').match(/([\d.]+)k/)
+    models.push({
+      name: cells[1], provider: cells[2],
+      parameter_count: paramMatch ? parseFloat(paramMatch[1]) * 1e9 : 0,
+      fit_level, run_mode: cells[8].toLowerCase(), score,
+      score_components: { quality: score/100, speed: tps/100, fit: (100-memPct)/100, context: 0.5 },
+      estimated_tps: tps, best_quant: cells[6],
+      memory_required_gb: parseFloat((system.total_ram_gb * memPct / 100).toFixed(1)),
+      memory_available_gb: system.available_ram_gb, utilization_pct: memPct,
+      context_length: ctxMatch ? parseFloat(ctxMatch[1]) * 1024 : 4096,
+      gguf_sources: [],
+    })
   }
+  return { system, models }
 }
 
 async function scanHardware() {
-  const port = await startLLMFit()
-  const response = await httpGet(port, '/api/system')
-  return JSON.parse(response)
+  const output = await runLLMFit(['system'])
+  return { system: parseSystemOutput(output) }
 }
 
 async function recommendModels() {
-  const port = await startLLMFit()
-  const response = await httpGet(port, '/api/fit')
-  return JSON.parse(response)
+  const output = await runLLMFit(['fit'])
+  return parseFitOutput(output)
 }
 
 // ─── Window ────────────────────────────────────────────────
@@ -283,8 +283,6 @@ app.whenReady().then(() => {
   ipcMain.handle('llmfit:scan-hardware', () => scanHardware())
   ipcMain.handle('llmfit:recommend-models', () => recommendModels())
 })
-
-app.on('before-quit', () => { stopLLMFit() })
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()
