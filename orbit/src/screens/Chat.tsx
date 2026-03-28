@@ -42,19 +42,18 @@ export default function Chat({
     el.scrollTo({ top: el.scrollHeight, behavior })
   }
 
-  useEffect(() => { scrollToBottom('smooth') }, [conversation.messages.length])
+  useEffect(() => { scrollToBottom('smooth') }, [conversation.messages.length, isStreaming])
 
   useEffect(() => {
     if (!isStreaming) return
-    let frameId: number
-    const pin = () => {
+    const framePin = () => {
       const el = scrollContainerRef.current
       if (el) el.scrollTop = el.scrollHeight
-      frameId = requestAnimationFrame(pin)
+      frameId = requestAnimationFrame(framePin)
     }
-    frameId = requestAnimationFrame(pin)
+    let frameId = requestAnimationFrame(framePin)
     return () => cancelAnimationFrame(frameId)
-  }, [isStreaming])
+  }, [isStreaming, streamedContent])
 
   // Welcome-to-Chat transition: auto-send if last message is unanswered user message
   const hasAutoSentRef = useRef(false)
