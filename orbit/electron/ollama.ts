@@ -70,6 +70,10 @@ export async function startOllama(): Promise<boolean> {
   })
 }
 
+export async function deleteModel(modelName: string): Promise<void> {
+  await httpRequest('DELETE', '/api/delete', JSON.stringify({ name: modelName }))
+}
+
 export function pullModel(modelName: string, win: BrowserWindow): Promise<void> {
   return new Promise((resolve, reject) => {
     const url = new URL('/api/pull', OLLAMA_HOST)

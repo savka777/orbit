@@ -8,6 +8,7 @@ export function createMockOrbit(): typeof window.orbit {
     listOllamaModels: vi.fn().mockResolvedValue({ models: [] }),
     startOllama: vi.fn().mockResolvedValue(true),
     pullModel: vi.fn().mockResolvedValue(undefined),
+    deleteModel: vi.fn().mockResolvedValue(undefined),
     chat: vi.fn().mockResolvedValue(undefined),
     scanHardware: vi.fn().mockResolvedValue({ system: {} }),
     recommendModels: vi.fn().mockResolvedValue({ system: {}, models: [] }),

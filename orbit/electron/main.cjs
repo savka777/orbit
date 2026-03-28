@@ -76,6 +76,10 @@ function startOllama() {
   })
 }
 
+async function deleteModel(modelName) {
+  await httpRequest('DELETE', '/api/delete', JSON.stringify({ name: modelName }))
+}
+
 function pullModel(modelName, win) {
   return new Promise((resolve, reject) => {
     const url = new URL('/api/pull', OLLAMA_HOST)
@@ -275,6 +279,7 @@ app.whenReady().then(() => {
   ipcMain.handle('ollama:pull-model', (_event, modelName) => {
     if (mainWindow) return pullModel(modelName, mainWindow)
   })
+  ipcMain.handle('ollama:delete-model', (_event, modelName) => deleteModel(modelName))
   ipcMain.handle('ollama:chat', (_event, { model, messages, conversationId }) => {
     if (mainWindow) return streamChat(model, messages, mainWindow, conversationId)
   })

@@ -1,6 +1,6 @@
 import { app, BrowserWindow, shell, ipcMain } from 'electron'
 import path from 'path'
-import { checkOllamaStatus, listOllamaModels, startOllama, pullModel, streamChat } from './ollama'
+import { checkOllamaStatus, listOllamaModels, startOllama, pullModel, deleteModel, streamChat } from './ollama'
 import { scanHardware, recommendModels, stopLLMFit } from './llmfit'
 
 const isDev = !app.isPackaged
@@ -72,6 +72,8 @@ app.whenReady().then(() => {
   ipcMain.handle('ollama:pull-model', (_event, modelName: string) => {
     if (mainWindow) return pullModel(modelName, mainWindow)
   })
+
+  ipcMain.handle('ollama:delete-model', (_event, modelName: string) => deleteModel(modelName))
 
   ipcMain.handle('ollama:chat', (_event, { model, messages, conversationId }) => {
     if (mainWindow) return streamChat(model, messages, mainWindow, conversationId)
