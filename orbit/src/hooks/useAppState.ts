@@ -8,7 +8,7 @@ export function useAppState() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('welcome')
   const [conversations, setConversations] = useState<Conversation[]>(initialConversations)
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null)
-  const [selectedModelId, setSelectedModelId] = useState<string>('llama-3.3-70b')
+  const [selectedModelId, setSelectedModelId] = useState<string>('')
   const [mcpTools, setMcpTools] = useState<MCPTool[]>(initialTools)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
 
