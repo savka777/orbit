@@ -36,23 +36,18 @@ function renderContent(text: string) {
 
 function ThinkingIndicator() {
   return (
-    <div className="flex items-center gap-1.5 py-1">
+    <div className="py-1">
       <div
-        className="h-2 w-2 rounded-sm bg-white/40"
-        style={{ animation: 'thinking-pulse 1.4s ease-in-out infinite' }}
-      />
-      <div
-        className="h-2 w-2 rounded-sm bg-white/40"
-        style={{ animation: 'thinking-pulse 1.4s ease-in-out 0.2s infinite' }}
-      />
-      <div
-        className="h-2 w-2 rounded-sm bg-white/40"
-        style={{ animation: 'thinking-pulse 1.4s ease-in-out 0.4s infinite' }}
+        className="h-4 w-3 rounded-[3px]"
+        style={{
+          background: 'linear-gradient(135deg, #5d79ff 0%, #3b4fcc 100%)',
+          animation: 'thinking-block 1.2s ease-in-out infinite',
+        }}
       />
       <style>{`
-        @keyframes thinking-pulse {
-          0%, 80%, 100% { opacity: 0.2; transform: scale(0.8); }
-          40% { opacity: 1; transform: scale(1.1); }
+        @keyframes thinking-block {
+          0%, 100% { opacity: 0.4; transform: scale(1); }
+          50% { opacity: 1; transform: scale(1.08); }
         }
       `}</style>
     </div>
