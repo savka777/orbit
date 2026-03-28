@@ -100,7 +100,6 @@ export default function App() {
             selectedModel={selectedModel}
             downloadedModels={downloadedModels}
             onSelectModel={setSelectedModelId}
-            onSuggestionClick={handleSendMessage}
             ollamaStatus={modelsHook.ollamaStatus}
             ollamaLoading={modelsHook.ollamaLoading}
             hasModels={downloadedModels.length > 0}

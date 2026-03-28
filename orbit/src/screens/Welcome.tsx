@@ -1,5 +1,3 @@
-import { FileText, Code, BarChart3 } from 'lucide-react'
-import { suggestions } from '../data/mock'
 import ChatInput from '../components/ChatInput'
 import SpiralAnimation from '../components/SpiralAnimation'
 
@@ -8,17 +6,10 @@ type WelcomeProps = {
   selectedModel: { id: string; name: string; parameterCount: string }
   downloadedModels: Array<{ id: string; name: string; parameterCount: string }>
   onSelectModel: (modelId: string) => void
-  onSuggestionClick: (title: string) => void
   ollamaStatus: 'not-installed' | 'installed-not-running' | 'running'
   ollamaLoading: boolean
   hasModels: boolean
   onNavigateToHardware: () => void
-}
-
-const iconMap: Record<string, React.ComponentType<{ className?: string; strokeWidth?: number }>> = {
-  FileText,
-  Code,
-  BarChart3,
 }
 
 export default function Welcome({
@@ -26,7 +17,6 @@ export default function Welcome({
   selectedModel,
   downloadedModels,
   onSelectModel,
-  onSuggestionClick,
   ollamaStatus,
   ollamaLoading,
   hasModels,
