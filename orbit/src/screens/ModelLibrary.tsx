@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Sparkles } from 'lucide-react'
+import { Sparkles, Search } from 'lucide-react'
 import type { Model } from '../types/models'
 import ModelCard from '../components/ModelCard'
 
@@ -54,6 +54,7 @@ function matchesFilter(model: Model, filter: Filter): boolean {
 
 export default function ModelLibrary({ models, downloadProgress, onDownload, onDelete, isLoading, hasScanRun, onNavigateToHardware }: ModelLibraryProps) {
   const [activeFilter, setActiveFilter] = useState<Filter>('all')
+  const [searchQuery, setSearchQuery] = useState('')
 
   if (isLoading) {
     return (
@@ -63,10 +64,12 @@ export default function ModelLibrary({ models, downloadProgress, onDownload, onD
     )
   }
 
-  const featuredModel = models.find(m => !m.downloaded && m.fitLevel !== 'too_tight' && m.fitLevel !== 'unknown')
+  const query = searchQuery.toLowerCase().trim()
+  const featuredModel = !query ? models.find(m => !m.downloaded && m.fitLevel !== 'too_tight' && m.fitLevel !== 'unknown') : undefined
   const filteredModels = models
     .filter((m) => m !== featuredModel)
     .filter((m) => matchesFilter(m, activeFilter))
+    .filter((m) => !query || m.name.toLowerCase().includes(query) || m.parameterCount.toLowerCase().includes(query) || m.description.toLowerCase().includes(query))
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-y-auto px-6 pb-6">
@@ -99,7 +102,8 @@ export default function ModelLibrary({ models, downloadProgress, onDownload, onD
           </div>
         )}
 
-        <div className="mb-4 flex shrink-0 flex-wrap gap-1.5">
+        <div className="mb-4 flex shrink-0 items-center gap-3">
+          <div className="flex flex-wrap gap-1.5">
           {filters.map(({ key, label }) => (
             <button
               key={key}
@@ -113,6 +117,17 @@ export default function ModelLibrary({ models, downloadProgress, onDownload, onD
               {label}
             </button>
           ))}
+          </div>
+          <div className="relative ml-auto">
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-white/28" strokeWidth={1.5} />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search models..."
+              className="w-44 rounded-full border border-white/8 bg-white/4 py-1 pl-8 pr-3 text-[11px] text-stone-100 placeholder:text-white/28 outline-none transition-colors focus:border-white/15 focus:bg-white/6"
+            />
+          </div>
         </div>
 
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 xl:grid-cols-3">
