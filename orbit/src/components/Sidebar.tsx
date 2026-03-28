@@ -48,9 +48,8 @@ export default function Sidebar({
     >
       <div className="app-sidebar-fade pointer-events-none absolute inset-0" />
 
-      {/* Drag region */}
-      <div className="drag-region h-7 w-full shrink-0" />
-      <div className="h-3 shrink-0" />
+      {/* Drag region — matches main area h-11 (44px) */}
+      <div className="drag-region h-11 w-full shrink-0" />
 
       <nav className={`relative z-10 ${collapsed ? 'px-1.5' : 'px-3'}`}>
         <div className="flex flex-col gap-0.5">

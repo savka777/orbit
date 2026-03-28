@@ -118,7 +118,7 @@ function ToolCard({
           : ''
       }`}
       style={tool.connected ? {
-        boxShadow: 'inset 3px 0 0 rgba(93, 121, 255, 0.42), 0 18px 60px rgba(0, 0, 0, 0.28)',
+        boxShadow: 'inset 0 0 0 1px rgba(93, 121, 255, 0.35), 0 18px 60px rgba(0, 0, 0, 0.28)',
       } : undefined}
     >
       <div className="flex items-center gap-2.5">
@@ -199,7 +199,7 @@ export default function MCPTools({ tools: propTools, onToggleConnection }: MCPTo
   }
 
   return (
-    <div className="h-full min-h-0 w-full overflow-y-auto px-6 pt-2 pb-6">
+    <div className="h-full min-h-0 w-full overflow-y-auto px-6 pb-6">
       <div className="mx-auto max-w-[960px]">
         <div className="mb-5 flex items-start justify-between">
           <div>
