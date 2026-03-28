@@ -16,6 +16,7 @@ export default function ModelCard({ model, downloadProgress, onDownload, onDelet
   const isDownloading = downloadProgress !== undefined && downloadProgress > 0 && !model.downloaded
   const isFeatured = variant === 'featured'
   const [showRemove, setShowRemove] = useState(false)
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
   const removeRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -23,6 +24,7 @@ export default function ModelCard({ model, downloadProgress, onDownload, onDelet
     function handleClickOutside(e: MouseEvent) {
       if (removeRef.current && !removeRef.current.contains(e.target as Node)) {
         setShowRemove(false)
+        setConfirmingDelete(false)
       }
     }
     document.addEventListener('mousedown', handleClickOutside)
@@ -63,10 +65,18 @@ export default function ModelCard({ model, downloadProgress, onDownload, onDelet
                       style={{ boxShadow: '0 20px 50px rgba(0, 0, 0, 0.4)' }}
                     >
                       <button
-                        onClick={() => { onDelete(model.id); setShowRemove(false) }}
-                        className="cursor-pointer whitespace-nowrap rounded-lg px-3 py-1.5 text-[12px] text-red-400 transition-colors hover:bg-white/6"
+                        onClick={() => {
+                          if (confirmingDelete) {
+                            onDelete(model.id)
+                            setShowRemove(false)
+                            setConfirmingDelete(false)
+                          } else {
+                            setConfirmingDelete(true)
+                          }
+                        }}
+                        className="cursor-pointer whitespace-nowrap rounded-lg px-3 py-1.5 text-[12px] transition-colors hover:bg-white/6 text-red-400"
                       >
-                        Remove
+                        {confirmingDelete ? `Remove ${model.name}?` : 'Remove'}
                       </button>
                     </div>
                   )}
@@ -121,10 +131,18 @@ export default function ModelCard({ model, downloadProgress, onDownload, onDelet
                     style={{ boxShadow: '0 20px 50px rgba(0, 0, 0, 0.4)' }}
                   >
                     <button
-                      onClick={() => { onDelete(model.id); setShowRemove(false) }}
-                      className="cursor-pointer whitespace-nowrap rounded-lg px-3 py-1.5 text-[12px] text-red-400 transition-colors hover:bg-white/6"
+                      onClick={() => {
+                        if (confirmingDelete) {
+                          onDelete(model.id)
+                          setShowRemove(false)
+                          setConfirmingDelete(false)
+                        } else {
+                          setConfirmingDelete(true)
+                        }
+                      }}
+                      className="cursor-pointer whitespace-nowrap rounded-lg px-3 py-1.5 text-[12px] transition-colors hover:bg-white/6 text-red-400"
                     >
-                      Remove
+                      {confirmingDelete ? `Remove ${model.name}?` : 'Remove'}
                     </button>
                   </div>
                 )}

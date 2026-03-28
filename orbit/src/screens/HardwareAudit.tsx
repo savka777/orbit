@@ -86,7 +86,10 @@ export default function HardwareAudit({
   onNavigateToModels,
   onNavigateToWelcome,
 }: HardwareAuditProps) {
-  const scanState = isScanning ? 'scanning' : systemProfile ? 'results' : 'idle'
+  const scanState = isScanning ? 'scanning'
+    : systemProfile ? 'results'
+    : scanError ? 'idle'  // Only show idle if there's an error (scan failed)
+    : 'scanning'  // Otherwise assume scan is starting
   const specs = systemProfile ? mapSystemToSpecs(systemProfile) : []
   const fullSpeedCount = models.filter(
     (m) => m.fitLevel === 'perfect' || m.fitLevel === 'good'

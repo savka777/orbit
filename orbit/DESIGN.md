@@ -220,6 +220,13 @@ flex column, full height
 - Suggestion cards exist in the code but are commented out. They may return later.
 - The ChatInput sits at the very bottom with `pb-6`.
 
+#### Ollama State Adaptation
+
+- **Running + models**: Chat input visible, model picker populated
+- **Running + no models**: Chat input hidden, "No models yet" pill-button links to Hardware
+- **Starting Ollama**: "Starting Ollama..." text during auto-start
+- **Not installed**: "Set up your first model" pill-button links to Hardware
+
 ---
 
 ## Chat Input
@@ -313,6 +320,8 @@ app-card app-card-hover, rounded-[22px], p-4
 
 **No category tags ("chat", "code", "creative" pills were removed).**
 
+Installed models show "Ready" pill. Clicking opens a dropdown with "Remove" option. Clicking "Remove" shows confirmation prompt. Confirming calls delete and refreshes the list.
+
 ### Filter Pills
 
 ```
@@ -340,6 +349,8 @@ Three states: idle, scanning, results.
 - **Idle:** centered icon + heading + "Start Scan" white pill button
 - **Scanning:** OrbitPulse animation + percentage counter
 - **Results:** System profile cards (2-col grid) + model compatibility list rows
+
+First visit auto-triggers scan — the idle "Start Scan" state only appears if the scan fails.
 
 ---
 

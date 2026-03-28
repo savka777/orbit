@@ -37,7 +37,9 @@ export default function Welcome({
           </div>
 
           {ollamaLoading ? (
-            <div className="mt-4 text-[13px] text-white/38">Detecting models...</div>
+            <div className="mt-4 text-[13px] text-white/38">
+              {ollamaStatus === 'installed-not-running' ? 'Starting Ollama...' : 'Detecting models...'}
+            </div>
           ) : !hasModels ? (
             <button
               onClick={onNavigateToHardware}
