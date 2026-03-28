@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Sparkles, Search } from 'lucide-react'
+import { Search } from 'lucide-react'
 import type { Model } from '../types/models'
 import ModelCard from '../components/ModelCard'
 
@@ -88,8 +88,7 @@ export default function ModelLibrary({ models, downloadProgress, onDownload, onD
 
         {featuredModel && (
           <div className="mb-5 shrink-0">
-            <div className="mb-2 flex items-center gap-1.5">
-              <Sparkles className="h-3.5 w-3.5 text-[#8ea0ff]" strokeWidth={1.5} />
+            <div className="mb-2">
               <span className="text-[11px] font-medium text-white/55">Featured</span>
             </div>
             <ModelCard
