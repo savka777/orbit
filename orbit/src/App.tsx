@@ -12,6 +12,7 @@ import Chat from './screens/Chat'
 import HardwareAudit from './screens/HardwareAudit'
 import ModelLibrary from './screens/ModelLibrary'
 import MCPTools from './screens/MCPTools'
+import Settings from './screens/Settings'
 
 const pageVariants = {
   initial: { opacity: 0 },
@@ -57,6 +58,7 @@ export default function App() {
     setSelectedModelId,
     toggleToolConnection,
     setSidebarCollapsed,
+    clearAllData,
   } = useAppState()
 
   const modelsHook = useModels()
@@ -151,6 +153,10 @@ export default function App() {
             tools={mcpTools}
             onToggleConnection={toggleToolConnection}
           />
+        )
+      case 'settings':
+        return (
+          <Settings onClearAllData={clearAllData} />
         )
     }
   }

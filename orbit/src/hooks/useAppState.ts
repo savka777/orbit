@@ -1,16 +1,37 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import type { Conversation, Message, MCPTool } from '../types/models'
-import { conversations as initialConversations, mcpTools as initialTools } from '../data/mock'
+import { mcpTools as initialTools } from '../data/mock'
 
-export type Screen = 'welcome' | 'chat' | 'hardware' | 'models' | 'tools'
+export type Screen = 'welcome' | 'chat' | 'hardware' | 'models' | 'tools' | 'settings'
+
+const STORAGE_KEY = 'orbit:conversations'
+
+function loadConversations(): Conversation[] {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY)
+    if (stored) return JSON.parse(stored)
+  } catch { /* ignore corrupt data */ }
+  return []
+}
+
+function saveConversations(conversations: Conversation[]) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(conversations))
+  } catch { /* ignore quota errors */ }
+}
 
 export function useAppState() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('welcome')
-  const [conversations, setConversations] = useState<Conversation[]>(initialConversations)
+  const [conversations, setConversations] = useState<Conversation[]>(loadConversations)
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null)
   const [selectedModelId, setSelectedModelId] = useState<string>('')
   const [mcpTools, setMcpTools] = useState<MCPTool[]>(initialTools)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+
+  // Persist conversations to localStorage on every change
+  useEffect(() => {
+    saveConversations(conversations)
+  }, [conversations])
 
   const activeConversation = conversations.find(c => c.id === activeConversationId) ?? null
 
@@ -89,6 +110,13 @@ export function useAppState() {
     ))
   }, [])
 
+  const clearAllData = useCallback(() => {
+    setConversations([])
+    setActiveConversationId(null)
+    setCurrentScreen('welcome')
+    localStorage.removeItem(STORAGE_KEY)
+  }, [])
+
   return {
     currentScreen,
     conversations,
@@ -106,5 +134,6 @@ export function useAppState() {
     setSelectedModelId,
     toggleToolConnection,
     setSidebarCollapsed,
+    clearAllData,
   }
 }
