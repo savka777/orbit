@@ -159,14 +159,18 @@ export default function HardwareAudit({
                     <div key={model.id} className="app-card app-card-hover flex items-center justify-between rounded-[18px] px-3.5 py-3">
                       <div className="flex items-center gap-3">
                         <span className="font-mono text-[13px] font-medium text-stone-50">{model.name}</span>
-                        {model.bestQuant && <span className="text-[12px] text-white/32">{model.bestQuant}</span>}
+                        {model.parameterCount && <span className="text-[12px] text-white/32">{model.parameterCount}</span>}
                         {model.downloaded && (
                           <span className="rounded-full bg-[#5d79ff]/15 px-2.5 py-0.5 text-[11px] font-medium text-[#5d79ff]">Installed</span>
                         )}
                       </div>
                       <div className="flex items-center gap-3">
-                        <span className="text-[12px] text-white/40">{model.memoryRequiredGb.toFixed(1)} GB</span>
-                        <span className="text-[11px] font-mono text-white/32">{model.estimatedTps} tok/s</span>
+                        {model.memoryRequiredGb > 0 && (
+                          <span className="text-[12px] text-white/40">{model.memoryRequiredGb.toFixed(1)} GB</span>
+                        )}
+                        {model.estimatedTps > 0 && (
+                          <span className="text-[11px] font-mono text-white/32">{model.estimatedTps} tok/s</span>
+                        )}
                         {!model.downloaded && model.fitLevel !== 'too_tight' && ollamaStatus === 'running' ? (
                           isDownloading ? (
                             <span className="text-[11px] font-mono text-white/52">{progress}%</span>
@@ -188,9 +192,9 @@ export default function HardwareAudit({
                           >
                             Install Ollama
                           </a>
-                        ) : (
+                        ) : !model.downloaded ? (
                           <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-medium ${config.classes}`}>{config.label}</span>
-                        )}
+                        ) : null}
                       </div>
                     </div>
                   )
