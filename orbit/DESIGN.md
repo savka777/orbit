@@ -89,8 +89,8 @@ Mono: 'SF Mono', ui-monospace, 'JetBrains Mono', monospace
 | `text-[13px]` | default UI text, nav items, input text, card titles |
 | `text-[14px] font-semibold` | section headings, screen titles |
 | `text-[16px] font-semibold` | featured card model name |
-| `text-[28px]` | welcome subtitle ("ai, free for all") |
-| `text-[36px] font-semibold` | welcome headline ("Orbit") |
+| `text-[28px]` | welcome subtitle ("your ai, your rules") |
+| `text-[36px]` | welcome headline ("Orbit") in Pacifico script font |
 
 ### Rules
 
@@ -98,6 +98,7 @@ Mono: 'SF Mono', ui-monospace, 'JetBrains Mono', monospace
 - Welcome screen uses large display sizes: `36px` headline, `28px` subtitle.
 - Use `font-mono` for model names, parameter counts, timestamps, config blocks.
 - Never use decorative fonts or font-weight changes for emphasis — use alpha/color instead.
+- **Exception:** The welcome headline "Orbit" uses the **Pacifico** script font (`fontFamily: "'Pacifico', cursive"`) loaded from Google Fonts. This is the only place a decorative font is used.
 
 ---
 
@@ -206,8 +207,8 @@ Ambient overlays in `App.tsx` add subtle atmosphere:
 flex column, full height
 ├── Hero area (flex-1, centered vertically)
 │   ├── SpiralAnimation (160px canvas, rounded-full)
-│   ├── "Orbit" (36px, semibold, white)
-│   └── "ai, free for all" (28px, white/45)
+│   ├── "Orbit" (36px, Pacifico script font, white)
+│   └── "your ai, your rules" (28px, white/45)
 ├── [Suggestion cards — currently commented out, may return]
 └── ChatInput (shrink-0, pinned to bottom)
 ```
@@ -215,7 +216,7 @@ flex column, full height
 ### Key Details
 
 - The animated spiral (`SpiralAnimation.tsx`) is a GSAP-driven canvas rendering white particles on a transparent background. It replaces the old static OrbitMark.
-- "Orbit" is the app name in large display text. "ai, free for all" is the tagline below in muted text.
+- "Orbit" is the app name in Pacifico script font at 36px. "your ai, your rules" is the tagline below in muted text.
 - Suggestion cards exist in the code but are commented out. They may return later.
 - The ChatInput sits at the very bottom with `pb-6`.
 

@@ -9,6 +9,10 @@ type WelcomeProps = {
   downloadedModels: Array<{ id: string; name: string; parameterCount: string }>
   onSelectModel: (modelId: string) => void
   onSuggestionClick: (title: string) => void
+  ollamaStatus: 'not-installed' | 'installed-not-running' | 'running'
+  ollamaLoading: boolean
+  hasModels: boolean
+  onNavigateToHardware: () => void
 }
 
 const iconMap: Record<string, React.ComponentType<{ className?: string; strokeWidth?: number }>> = {
@@ -23,6 +27,10 @@ export default function Welcome({
   downloadedModels,
   onSelectModel,
   onSuggestionClick,
+  ollamaStatus,
+  ollamaLoading,
+  hasModels,
+  onNavigateToHardware,
 }: WelcomeProps) {
   return (
     <div className="relative flex h-full min-h-0 w-full flex-col overflow-hidden">
@@ -31,12 +39,23 @@ export default function Welcome({
           <div className="mb-2 flex items-center justify-center rounded-full">
             <SpiralAnimation size={160} className="rounded-full" />
           </div>
-          <h1 className="text-center text-[36px] font-semibold tracking-[-0.025em] text-white">
+          <h1 className="text-center text-[36px] tracking-[-0.025em] text-white" style={{ fontFamily: "'Pacifico', cursive" }}>
             Orbit
           </h1>
           <div className="text-center text-[28px] tracking-[-0.02em] text-white/45">
-            ai, free for all
+            your ai, your rules
           </div>
+
+          {ollamaLoading ? (
+            <div className="mt-4 text-[13px] text-white/38">Detecting models...</div>
+          ) : !hasModels ? (
+            <button
+              onClick={onNavigateToHardware}
+              className="mt-4 cursor-pointer rounded-full border border-white/8 bg-white/4 px-4 py-1.5 text-[13px] text-white/58 transition-colors hover:bg-white/7 hover:text-white"
+            >
+              {ollamaStatus === 'not-installed' ? 'Set up your first model' : 'No models yet — browse models'}
+            </button>
+          ) : null}
         </div>
       </div>
 
@@ -65,14 +84,16 @@ export default function Welcome({
       </div>
       */}
 
-      <div className="shrink-0 pb-6">
-        <ChatInput
-          onSend={onSend}
-          selectedModel={selectedModel}
-          downloadedModels={downloadedModels}
-          onSelectModel={onSelectModel}
-        />
-      </div>
+      {hasModels ? (
+        <div className="shrink-0 pb-6">
+          <ChatInput
+            onSend={onSend}
+            selectedModel={selectedModel}
+            downloadedModels={downloadedModels}
+            onSelectModel={onSelectModel}
+          />
+        </div>
+      ) : null}
     </div>
   )
 }

@@ -3,20 +3,22 @@ import { Sparkles } from 'lucide-react'
 import type { Model } from '../types/models'
 import ModelCard from '../components/ModelCard'
 
-type Filter = 'all' | 'chat' | 'code' | 'creative' | 'small' | 'medium' | 'large'
+type Filter = 'all' | 'chat' | 'code' | 'small' | 'medium' | 'large'
 
 type ModelLibraryProps = {
   models: Model[]
   downloadProgress: Record<string, number>
   onDownload: (modelId: string) => void
+  onDelete: (modelId: string) => void
   isLoading?: boolean
+  hasScanRun: boolean
+  onNavigateToHardware: () => void
 }
 
 const filters: { key: Filter; label: string }[] = [
   { key: 'all', label: 'All' },
   { key: 'chat', label: 'Chat' },
   { key: 'code', label: 'Code' },
-  { key: 'creative', label: 'Creative' },
   { key: 'small', label: '<5 GB' },
   { key: 'medium', label: '5-20 GB' },
   { key: 'large', label: '20 GB+' },
@@ -38,7 +40,6 @@ function matchesFilter(model: Model, filter: Filter): boolean {
       return true
     case 'chat':
     case 'code':
-    case 'creative':
       return model.categories.includes(filter)
     case 'small':
       return parseSize(model.size) < 5
@@ -51,7 +52,7 @@ function matchesFilter(model: Model, filter: Filter): boolean {
   }
 }
 
-export default function ModelLibrary({ models, downloadProgress, onDownload, isLoading }: ModelLibraryProps) {
+export default function ModelLibrary({ models, downloadProgress, onDownload, onDelete, isLoading, hasScanRun, onNavigateToHardware }: ModelLibraryProps) {
   const [activeFilter, setActiveFilter] = useState<Filter>('all')
 
   if (isLoading) {
@@ -62,9 +63,9 @@ export default function ModelLibrary({ models, downloadProgress, onDownload, isL
     )
   }
 
-  const featuredModel = models.find((m) => m.featured)
+  const featuredModel = models.find(m => !m.downloaded && m.fitLevel !== 'too_tight' && m.fitLevel !== 'unknown')
   const filteredModels = models
-    .filter((m) => !m.featured)
+    .filter((m) => m !== featuredModel)
     .filter((m) => matchesFilter(m, activeFilter))
 
   return (
@@ -74,6 +75,13 @@ export default function ModelLibrary({ models, downloadProgress, onDownload, isL
           <h1 className="text-[14px] font-semibold text-stone-50">Model Library</h1>
           <p className="mt-0.5 text-[12px] text-white/38">Browse and download local-first AI models</p>
         </div>
+
+        {!hasScanRun && (
+          <div className="mb-4 flex items-center gap-2 rounded-2xl border border-white/8 bg-white/4 px-4 py-2.5">
+            <span className="text-[12px] text-white/46">Run a hardware scan to see compatibility ratings</span>
+            <button onClick={onNavigateToHardware} className="cursor-pointer text-[12px] font-medium text-[#7d92ff] hover:text-white">Go to Hardware</button>
+          </div>
+        )}
 
         {featuredModel && (
           <div className="mb-5 shrink-0">
@@ -85,6 +93,7 @@ export default function ModelLibrary({ models, downloadProgress, onDownload, isL
               model={featuredModel}
               downloadProgress={downloadProgress[featuredModel.id]}
               onDownload={onDownload}
+              onDelete={onDelete}
               variant="featured"
             />
           </div>
@@ -113,6 +122,7 @@ export default function ModelLibrary({ models, downloadProgress, onDownload, isL
               model={model}
               downloadProgress={downloadProgress[model.id]}
               onDownload={onDownload}
+              onDelete={onDelete}
             />
           ))}
         </div>

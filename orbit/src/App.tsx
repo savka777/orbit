@@ -1,8 +1,10 @@
-import { useCallback } from 'react'
+import { useCallback, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAppState } from './hooks/useAppState'
+import type { Screen } from './hooks/useAppState'
 import { useKeyboardNav } from './hooks/useKeyboardNav'
-import { useOllama } from './hooks/useOllama'
+import { useModels } from './hooks/useModels'
+import type { Model } from './types/models'
 import Sidebar from './components/Sidebar'
 import GrainFilter from './components/GrainFilter'
 import Welcome from './screens/Welcome'
@@ -20,6 +22,22 @@ const pageVariants = {
 const pageTransition = {
   duration: 0.15,
   ease: 'easeInOut' as const,
+}
+
+const emptyModel: Model = {
+  id: '',
+  name: 'No model',
+  parameterCount: '',
+  size: '',
+  categories: [],
+  description: '',
+  downloaded: false,
+  compatibility: 'unknown' as const,
+  score: 0,
+  estimatedTps: 0,
+  memoryRequiredGb: 0,
+  bestQuant: '',
+  fitLevel: 'unknown' as const,
 }
 
 export default function App() {
@@ -41,9 +59,23 @@ export default function App() {
     setSidebarCollapsed,
   } = useAppState()
 
-  const ollama = useOllama()
-  const selectedModel = ollama.models.find(m => m.id === selectedModelId) ?? ollama.models[0] ?? { id: '', name: 'No model', parameterCount: '' }
-  const downloadedModels = ollama.models.filter(m => m.downloaded)
+  const modelsHook = useModels()
+
+  // Auto-select first downloaded model
+  useEffect(() => {
+    if (selectedModelId === '' || !modelsHook.models.find(m => m.id === selectedModelId)) {
+      const firstDownloaded = modelsHook.models.find(m => m.downloaded)
+      if (firstDownloaded) setSelectedModelId(firstDownloaded.id)
+    }
+  }, [modelsHook.models, selectedModelId, setSelectedModelId])
+
+  const selectedModel = modelsHook.models.find(m => m.id === selectedModelId) ?? modelsHook.models[0] ?? emptyModel
+  const downloadedModels = modelsHook.models.filter(m => m.downloaded)
+
+  const navigateToWithScan = useCallback((screen: Screen) => {
+    navigateTo(screen)
+    if (screen === 'hardware') modelsHook.triggerScan()
+  }, [navigateTo, modelsHook.triggerScan])
 
   const handleSendMessage = useCallback((content: string) => {
     sendMessage(content, selectedModel.name)
@@ -54,7 +86,7 @@ export default function App() {
   }, [setSidebarCollapsed])
 
   useKeyboardNav({
-    onNavigate: navigateTo,
+    onNavigate: navigateToWithScan,
     onNewChat: startNewChat,
     onToggleSidebar: toggleSidebar,
   })
@@ -69,6 +101,10 @@ export default function App() {
             downloadedModels={downloadedModels}
             onSelectModel={setSelectedModelId}
             onSuggestionClick={handleSendMessage}
+            ollamaStatus={modelsHook.ollamaStatus}
+            ollamaLoading={modelsHook.ollamaLoading}
+            hasModels={downloadedModels.length > 0}
+            onNavigateToHardware={() => navigateToWithScan('hardware')}
           />
         )
       case 'chat':
@@ -86,16 +122,28 @@ export default function App() {
       case 'hardware':
         return (
           <HardwareAudit
+            systemProfile={modelsHook.systemProfile}
+            models={modelsHook.models}
+            isScanning={modelsHook.isScanning}
+            scanError={modelsHook.scanError}
+            ollamaStatus={modelsHook.ollamaStatus}
+            downloadProgress={modelsHook.downloadProgress}
+            onScan={modelsHook.triggerScan}
+            onDownload={modelsHook.pullModel}
             onNavigateToModels={() => navigateTo('models')}
+            onNavigateToWelcome={() => navigateTo('welcome')}
           />
         )
       case 'models':
         return (
           <ModelLibrary
-            models={ollama.models}
-            downloadProgress={ollama.downloadProgress}
-            onDownload={ollama.pullModel}
-            isLoading={ollama.isLoading}
+            models={modelsHook.models}
+            downloadProgress={modelsHook.downloadProgress}
+            onDownload={modelsHook.pullModel}
+            onDelete={modelsHook.deleteModel}
+            isLoading={modelsHook.ollamaLoading}
+            hasScanRun={modelsHook.hasScanRun}
+            onNavigateToHardware={() => navigateToWithScan('hardware')}
           />
         )
       case 'tools':
@@ -117,7 +165,7 @@ export default function App() {
           conversations={conversations}
           activeConversationId={activeConversationId}
           collapsed={sidebarCollapsed}
-          onNavigate={navigateTo}
+          onNavigate={navigateToWithScan}
           onOpenConversation={openConversation}
           onNewChat={startNewChat}
           onToggleCollapse={toggleSidebar}

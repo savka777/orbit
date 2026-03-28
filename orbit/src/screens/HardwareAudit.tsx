@@ -1,12 +1,21 @@
 import { AnimatePresence, motion } from 'framer-motion'
-import { Cpu, MemoryStick, Monitor, Check, AlertTriangle } from 'lucide-react'
+import { Cpu, MemoryStick, Monitor, Check, AlertTriangle, Download, MessageSquare } from 'lucide-react'
 import OrbitPulse from '../components/OrbitPulse'
-import { useLLMFit } from '../hooks/useLLMFit'
 import type { SystemProfile } from '../types/llmfit'
-import type { HardwareSpec } from '../types/models'
+import type { Model, HardwareSpec } from '../types/models'
+import type { OllamaStatus } from '../types/ollama'
 
 type HardwareAuditProps = {
+  systemProfile: SystemProfile | null
+  models: Model[]
+  isScanning: boolean
+  scanError: Error | null
+  ollamaStatus: OllamaStatus
+  downloadProgress: Record<string, number>
+  onScan: () => void
+  onDownload: (modelName: string) => void
   onNavigateToModels?: () => void
+  onNavigateToWelcome?: () => void
 }
 
 const iconMap: Record<string, React.ComponentType<{ className?: string; strokeWidth?: number }>> = {
@@ -25,11 +34,12 @@ const statusDotColor: Record<string, string> = {
   low: 'bg-[#ff7b7b]',
 }
 
-const fitLevelConfig = {
+const fitLevelConfig: Record<string, { label: string; classes: string }> = {
   perfect: { label: 'Full Speed', classes: 'bg-white text-stone-900' },
   good: { label: 'Full Speed', classes: 'bg-white text-stone-900' },
   marginal: { label: 'Reduced Speed', classes: 'bg-white/7 text-white/68' },
   too_tight: { label: 'Incompatible', classes: 'bg-white/5 text-white/34' },
+  unknown: { label: 'Unknown', classes: 'bg-white/5 text-white/34' },
 }
 
 function mapSystemToSpecs(system: SystemProfile): HardwareSpec[] {
@@ -64,14 +74,24 @@ function mapSystemToSpecs(system: SystemProfile): HardwareSpec[] {
   return specs
 }
 
-export default function HardwareAudit({ onNavigateToModels }: HardwareAuditProps) {
-  const { systemProfile, scoredModels, isScanning, error, scanAndRecommend } = useLLMFit()
-
+export default function HardwareAudit({
+  systemProfile,
+  models,
+  isScanning,
+  scanError,
+  ollamaStatus,
+  downloadProgress,
+  onScan,
+  onDownload,
+  onNavigateToModels,
+  onNavigateToWelcome,
+}: HardwareAuditProps) {
   const scanState = isScanning ? 'scanning' : systemProfile ? 'results' : 'idle'
   const specs = systemProfile ? mapSystemToSpecs(systemProfile) : []
-  const fullSpeedCount = scoredModels.filter(
-    (m) => m.fit_level === 'perfect' || m.fit_level === 'good'
+  const fullSpeedCount = models.filter(
+    (m) => m.fitLevel === 'perfect' || m.fitLevel === 'good'
   ).length
+  const hasAnyDownloaded = models.some(m => m.downloaded)
 
   return (
     <div className="h-full min-h-0 overflow-y-auto px-6 pb-6">
@@ -83,8 +103,8 @@ export default function HardwareAudit({ onNavigateToModels }: HardwareAuditProps
             </div>
             <h1 className="mb-1 text-[14px] font-semibold text-stone-50">Scan Your Hardware</h1>
             <p className="mb-6 text-[12px] text-white/38">Detect your system specs and find compatible models</p>
-            {error && <p className="mb-4 text-[12px] text-red-400">{error.message}</p>}
-            <button onClick={scanAndRecommend} className="cursor-pointer rounded-full bg-white px-5 py-2 text-[13px] font-medium text-stone-900 transition-colors hover:bg-stone-100 active:scale-[0.98]">Start Scan</button>
+            {scanError && <p className="mb-4 text-[12px] text-red-400">{scanError.message}</p>}
+            <button onClick={onScan} className="cursor-pointer rounded-full bg-white px-5 py-2 text-[13px] font-medium text-stone-900 transition-colors hover:bg-stone-100 active:scale-[0.98]">Start Scan</button>
           </motion.div>
         )}
 
@@ -127,18 +147,47 @@ export default function HardwareAudit({ onNavigateToModels }: HardwareAuditProps
             <div>
               <h2 className="mb-3 text-[14px] font-semibold text-stone-50">Model Compatibility</h2>
               <div className="space-y-1">
-                {scoredModels.map((model) => {
-                  const config = fitLevelConfig[model.fit_level]
+                {models.map((model) => {
+                  const config = fitLevelConfig[model.fitLevel] ?? fitLevelConfig.unknown
+                  const progress = downloadProgress[model.id]
+                  const isDownloading = progress !== undefined && progress > 0 && progress < 100
+
                   return (
-                    <div key={model.name} className="app-card app-card-hover flex items-center justify-between rounded-[18px] px-3.5 py-3">
+                    <div key={model.id} className="app-card app-card-hover flex items-center justify-between rounded-[18px] px-3.5 py-3">
                       <div className="flex items-center gap-3">
                         <span className="font-mono text-[13px] font-medium text-stone-50">{model.name}</span>
-                        <span className="text-[12px] text-white/32">{model.best_quant}</span>
+                        {model.bestQuant && <span className="text-[12px] text-white/32">{model.bestQuant}</span>}
+                        {model.downloaded && (
+                          <span className="rounded-full bg-[#5d79ff]/15 px-2.5 py-0.5 text-[11px] font-medium text-[#5d79ff]">Installed</span>
+                        )}
                       </div>
                       <div className="flex items-center gap-3">
-                        <span className="text-[12px] text-white/40">{model.memory_required_gb.toFixed(1)} GB</span>
-                        <span className="text-[11px] font-mono text-white/32">{model.estimated_tps} tok/s</span>
-                        <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-medium ${config.classes}`}>{config.label}</span>
+                        <span className="text-[12px] text-white/40">{model.memoryRequiredGb.toFixed(1)} GB</span>
+                        <span className="text-[11px] font-mono text-white/32">{model.estimatedTps} tok/s</span>
+                        {!model.downloaded && model.fitLevel !== 'too_tight' && ollamaStatus === 'running' ? (
+                          isDownloading ? (
+                            <span className="text-[11px] font-mono text-white/52">{progress}%</span>
+                          ) : (
+                            <button
+                              onClick={() => onDownload(model.id)}
+                              className="flex cursor-pointer items-center gap-1 rounded-full border border-white/8 bg-white/6 px-2.5 py-1 text-[11px] font-medium text-stone-100 transition-colors hover:bg-white/10 active:scale-95"
+                            >
+                              <Download className="h-3 w-3" strokeWidth={1.5} />
+                              Download
+                            </button>
+                          )
+                        ) : !model.downloaded && model.fitLevel !== 'too_tight' && ollamaStatus !== 'running' ? (
+                          <a
+                            href="https://ollama.com"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-[11px] font-medium text-[#7d92ff] hover:text-white"
+                          >
+                            Install Ollama
+                          </a>
+                        ) : (
+                          <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-medium ${config.classes}`}>{config.label}</span>
+                        )}
                       </div>
                     </div>
                   )
@@ -151,7 +200,18 @@ export default function HardwareAudit({ onNavigateToModels }: HardwareAuditProps
                 <AlertTriangle className="h-3.5 w-3.5 text-[#7d92ff]" strokeWidth={1.5} />
                 <span>Your system can run{' '}<span className="font-medium text-stone-50">{fullSpeedCount} models</span>{' '}at full speed</span>
               </div>
-              <button onClick={onNavigateToModels} className="cursor-pointer rounded-full bg-white px-4 py-1.5 text-[13px] font-medium text-stone-900 transition-colors hover:bg-stone-100 active:scale-[0.98]">Browse Model Library</button>
+              <div className="flex items-center gap-2">
+                {hasAnyDownloaded && onNavigateToWelcome && (
+                  <button
+                    onClick={onNavigateToWelcome}
+                    className="flex cursor-pointer items-center gap-1.5 rounded-full border border-white/8 bg-white/4 px-4 py-1.5 text-[13px] text-white/58 transition-colors hover:bg-white/7 hover:text-white"
+                  >
+                    <MessageSquare className="h-3.5 w-3.5" strokeWidth={1.5} />
+                    Start chatting
+                  </button>
+                )}
+                <button onClick={onNavigateToModels} className="cursor-pointer rounded-full bg-white px-4 py-1.5 text-[13px] font-medium text-stone-900 transition-colors hover:bg-stone-100 active:scale-[0.98]">Browse Model Library</button>
+              </div>
             </div>
           </motion.div>
         )}
