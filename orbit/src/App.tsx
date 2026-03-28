@@ -138,7 +138,7 @@ export default function App() {
               animate="animate"
               exit="exit"
               transition={pageTransition}
-              className="relative z-10 flex flex-col flex-1 min-h-0 overflow-hidden pt-10"
+              className="relative z-10 flex flex-col flex-1 min-h-0 overflow-hidden pt-8"
             >
               {renderScreen()}
             </motion.div>

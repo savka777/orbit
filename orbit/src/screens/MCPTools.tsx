@@ -199,7 +199,7 @@ export default function MCPTools({ tools: propTools, onToggleConnection }: MCPTo
   }
 
   return (
-    <div className="h-full min-h-0 w-full overflow-y-auto px-6 pb-6">
+    <div className="h-full min-h-0 w-full overflow-y-auto px-6 pt-2 pb-6">
       <div className="mx-auto max-w-[960px]">
         <div className="mb-5 flex items-start justify-between">
           <div>

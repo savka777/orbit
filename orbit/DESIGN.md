@@ -108,11 +108,12 @@ Mono: 'SF Mono', ui-monospace, 'JetBrains Mono', monospace
 Content must never hug the top of the window. The spacing is built in layers:
 
 1. **Drag region** in `App.tsx`: `h-11` (44px) — macOS title bar dragging area
-2. **Motion wrapper** `pt-10` (40px) — fixed non-scrollable padding on the `motion.div`
+2. **Motion wrapper** `pt-8` (32px) — fixed non-scrollable padding on the `motion.div`
+3. **Screen internal** `pt-2` (8px) — light rhythm inside scroll containers
 
 Total: **84px of fixed, non-scrollable space** from window top to first content pixel.
 
-**Why this matters:** All spacing is OUTSIDE scroll containers. Screens must NOT add their own top padding (`pt-2`, etc.) inside `overflow-y-auto` divs — that padding scrolls away and breaks the layout.
+**Why this matters:** Previous attempts put padding inside scroll containers where it scrolled away. The current approach puts spacing OUTSIDE the scroll area in the motion.div wrapper so it's permanent.
 
 ### Main Shell Structure
 
@@ -121,7 +122,7 @@ app-shell (flex row, full viewport)
 ├── Sidebar (260px expanded / 48px collapsed)
 └── main.app-main-surface (flex-1, flex-col)
     ├── drag-region (h-11, shrink-0)
-    └── AnimatePresence > motion.div (flex-1, flex-col, pt-10, min-h-0, overflow-hidden)
+    └── AnimatePresence > motion.div (flex-1, flex-col, pt-8, min-h-0, overflow-hidden)
         └── Screen component (flex-1, internal scrolling)
 ```
 
