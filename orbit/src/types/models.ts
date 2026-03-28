@@ -6,8 +6,12 @@ export type Model = {
   categories: string[]
   description: string
   downloaded: boolean
-  featured?: boolean
   compatibility: 'full' | 'partial' | 'incompatible' | 'unknown'
+  score: number
+  estimatedTps: number
+  memoryRequiredGb: number
+  bestQuant: string
+  fitLevel: 'perfect' | 'good' | 'marginal' | 'too_tight' | 'unknown'
 }
 
 export type Message = {
