@@ -37,8 +37,19 @@ export default function Welcome({
           </div>
 
           {ollamaLoading ? (
-            <div className="mt-4 text-[13px] text-white/38">
-              {ollamaStatus === 'installed-not-running' ? 'Starting Ollama...' : 'Detecting models...'}
+            <div className="mt-4 flex items-center gap-1">
+              <span className="text-[13px] text-white/38">Loading</span>
+              <span className="flex gap-0.5">
+                <span className="h-1 w-1 rounded-full bg-white/38" style={{ animation: 'loading-dot 1.4s ease-in-out infinite' }} />
+                <span className="h-1 w-1 rounded-full bg-white/38" style={{ animation: 'loading-dot 1.4s ease-in-out 0.2s infinite' }} />
+                <span className="h-1 w-1 rounded-full bg-white/38" style={{ animation: 'loading-dot 1.4s ease-in-out 0.4s infinite' }} />
+              </span>
+              <style>{`
+                @keyframes loading-dot {
+                  0%, 80%, 100% { opacity: 0.2; }
+                  40% { opacity: 1; }
+                }
+              `}</style>
             </div>
           ) : !hasModels ? (
             <button
