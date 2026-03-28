@@ -1,69 +1,5 @@
-import type { Model, Message, Conversation, MCPTool, HardwareSpec } from '../types/models'
-export type { Model, Message, Conversation, MCPTool, HardwareSpec }
-
-export const models: Model[] = [
-  {
-    id: 'llama-3.3-70b',
-    name: 'Llama 3.3',
-    parameterCount: '70B',
-    size: '40 GB',
-    categories: ['chat', 'code'],
-    description: 'Meta\'s most capable open model. Excellent at reasoning, coding, and creative tasks.',
-    downloaded: true,
-    featured: true,
-    compatibility: 'partial',
-  },
-  {
-    id: 'mistral-7b',
-    name: 'Mistral',
-    parameterCount: '7B',
-    size: '4.1 GB',
-    categories: ['chat'],
-    description: 'Fast and efficient. Great for everyday conversations and quick tasks.',
-    downloaded: true,
-    compatibility: 'full',
-  },
-  {
-    id: 'phi-3-mini',
-    name: 'Phi-3 Mini',
-    parameterCount: '3.8B',
-    size: '2.3 GB',
-    categories: ['chat', 'code'],
-    description: 'Microsoft\'s compact powerhouse. Punches above its weight on reasoning benchmarks.',
-    downloaded: false,
-    compatibility: 'full',
-  },
-  {
-    id: 'qwen-2.5-32b',
-    name: 'Qwen 2.5',
-    parameterCount: '32B',
-    size: '18 GB',
-    categories: ['chat', 'creative'],
-    description: 'Alibaba\'s multilingual model. Excels at creative writing and analysis.',
-    downloaded: false,
-    compatibility: 'full',
-  },
-  {
-    id: 'deepseek-coder-33b',
-    name: 'DeepSeek Coder',
-    parameterCount: '33B',
-    size: '19 GB',
-    categories: ['code'],
-    description: 'Purpose-built for software development. Understands 80+ programming languages.',
-    downloaded: false,
-    compatibility: 'full',
-  },
-  {
-    id: 'gemma-2-9b',
-    name: 'Gemma 2',
-    parameterCount: '9B',
-    size: '5.4 GB',
-    categories: ['chat', 'creative'],
-    description: 'Google\'s open model. Balanced performance with excellent instruction following.',
-    downloaded: false,
-    compatibility: 'full',
-  },
-]
+import type { Message, Conversation, MCPTool } from '../types/models'
+export type { Message, Conversation, MCPTool }
 
 export const conversations: Conversation[] = [
   {
@@ -228,12 +164,6 @@ export const mcpTools: MCPTool[] = [
   },
 ]
 
-export const hardwareSpecs: HardwareSpec[] = [
-  { label: 'CPU', value: 'Apple M2 Pro (12-core)', icon: 'Cpu', status: 'good' },
-  { label: 'Memory', value: '16 GB Unified', icon: 'MemoryStick', status: 'good' },
-  { label: 'GPU', value: 'M2 Pro 19-core GPU', icon: 'Monitor', status: 'good' },
-  { label: 'Storage', value: '512 GB SSD (318 GB free)', icon: 'HardDrive', status: 'warning' },
-]
 
 export const suggestions = [
   { icon: 'FileText', title: 'Summarize a document', description: 'Upload a PDF or paste text to get a concise summary' },
