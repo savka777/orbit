@@ -1,4 +1,3 @@
-import { useState, useEffect } from 'react'
 import OrbitMark from './OrbitMark'
 
 type ChatMessageProps = {
@@ -7,7 +6,6 @@ type ChatMessageProps = {
   model?: string
   timestamp: string
   isStreaming?: boolean
-  isThinking?: boolean
 }
 
 function renderContent(text: string) {
@@ -34,59 +32,14 @@ function renderContent(text: string) {
   })
 }
 
-function ThinkingIndicator() {
-  return (
-    <div className="py-1">
-      <div
-        className="h-4 w-3 rounded-[3px]"
-        style={{
-          background: 'linear-gradient(135deg, #5d79ff 0%, #3b4fcc 100%)',
-          animation: 'thinking-block 1.2s ease-in-out infinite',
-        }}
-      />
-      <style>{`
-        @keyframes thinking-block {
-          0%, 100% { opacity: 0.4; transform: scale(1); }
-          50% { opacity: 1; transform: scale(1.08); }
-        }
-      `}</style>
-    </div>
-  )
-}
-
 export default function ChatMessage({
   role,
   content,
   model,
   timestamp,
   isStreaming = false,
-  isThinking = false,
 }: ChatMessageProps) {
-  const [displayedLength, setDisplayedLength] = useState(isStreaming ? 0 : content.length)
-
-  useEffect(() => {
-    if (!isStreaming) {
-      setDisplayedLength(content.length)
-      return
-    }
-
-    setDisplayedLength(0)
-    const interval = setInterval(() => {
-      setDisplayedLength((prev) => {
-        if (prev >= content.length) {
-          clearInterval(interval)
-          return content.length
-        }
-        return prev + 2
-      })
-    }, 12)
-
-    return () => clearInterval(interval)
-  }, [isStreaming, content])
-
-  const visibleContent = isStreaming ? content.slice(0, displayedLength) : content
   const isUser = role === 'user'
-  const showCursor = isStreaming && displayedLength < content.length
 
   if (isUser) {
     return (
@@ -94,7 +47,7 @@ export default function ChatMessage({
         <div className="max-w-[80%]">
           <div className="rounded-2xl bg-white/8 px-4 py-2.5">
             <div className="text-[13px] font-medium leading-[1.5] text-stone-50">
-              {renderContent(visibleContent)}
+              {renderContent(content)}
             </div>
           </div>
           {timestamp && (
@@ -116,26 +69,20 @@ export default function ChatMessage({
       </div>
 
       <div className="flex-1 min-w-0">
-        {isThinking ? (
-          <ThinkingIndicator />
-        ) : (
-          <>
-            <div className={`text-[13px] leading-[1.75] text-white/78`}>
-              {renderContent(visibleContent)}
-              {showCursor && (
-                <span
-                  className="ml-px inline-block h-[1.1em] w-[2px] align-text-bottom bg-white"
-                  style={{ animation: 'blink-cursor 500ms step-end infinite' }}
-                />
-              )}
-            </div>
+        <div className="text-[13px] leading-[1.75] text-white/78">
+          {renderContent(content)}
+          {isStreaming && (
+            <span
+              className="ml-px inline-block h-[1.1em] w-[2px] align-text-bottom bg-white"
+              style={{ animation: 'blink-cursor 500ms step-end infinite' }}
+            />
+          )}
+        </div>
 
-            {timestamp && (
-              <div className="mt-1 text-[11px] font-mono text-white/24">
-                {timestamp}
-              </div>
-            )}
-          </>
+        {timestamp && (
+          <div className="mt-1 text-[11px] font-mono text-white/24">
+            {timestamp}
+          </div>
         )}
       </div>
     </div>

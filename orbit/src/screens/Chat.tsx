@@ -80,10 +80,7 @@ export default function Chat({
           {conversation.messages.map((msg) => (
             <ChatMessage key={msg.id} role={msg.role} content={msg.content} model={msg.model} timestamp={msg.timestamp} isStreaming={false} />
           ))}
-          {isStreaming && !streamedContent && (
-            <ChatMessage role="assistant" content="" model={selectedModel.name} timestamp="" isThinking={true} />
-          )}
-          {isStreaming && streamedContent && (
+          {isStreaming && (
             <ChatMessage role="assistant" content={streamedContent} model={selectedModel.name} timestamp="" isStreaming={true} />
           )}
           {error && (
