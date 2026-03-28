@@ -25,7 +25,7 @@ export default function Chat({
   const scrollContainerRef = useRef<HTMLDivElement>(null)
 
   const { sendMessage, isStreaming, streamedContent, error } = useChat({
-    model: selectedModel.name,
+    model: selectedModel.id,
     conversationId: conversation.id,
     onStreamComplete: (content) => {
       const now = new Date()
@@ -42,19 +42,18 @@ export default function Chat({
     el.scrollTo({ top: el.scrollHeight, behavior })
   }
 
-  useEffect(() => { scrollToBottom('smooth') }, [conversation.messages.length])
+  useEffect(() => { scrollToBottom('smooth') }, [conversation.messages.length, isStreaming])
 
   useEffect(() => {
     if (!isStreaming) return
-    let frameId: number
-    const pin = () => {
+    const framePin = () => {
       const el = scrollContainerRef.current
       if (el) el.scrollTop = el.scrollHeight
-      frameId = requestAnimationFrame(pin)
+      frameId = requestAnimationFrame(framePin)
     }
-    frameId = requestAnimationFrame(pin)
+    let frameId = requestAnimationFrame(framePin)
     return () => cancelAnimationFrame(frameId)
-  }, [isStreaming])
+  }, [isStreaming, streamedContent])
 
   // Welcome-to-Chat transition: auto-send if last message is unanswered user message
   const hasAutoSentRef = useRef(false)
@@ -77,18 +76,11 @@ export default function Chat({
   return (
     <div className="flex flex-1 min-h-0 flex-col">
       <div ref={scrollContainerRef} className="flex-1 min-h-0 overflow-y-auto px-6 pt-2 pb-6">
-        <div className="mx-auto mb-6 flex max-w-[640px] items-center justify-between">
-          <div>
-            <div className="text-[11px] uppercase tracking-[0.18em] text-white/26">Conversation</div>
-            <div className="mt-1 text-[14px] font-semibold text-stone-50">{conversation.title}</div>
-          </div>
-          <div className="rounded-full border border-white/8 bg-white/4 px-2.5 py-1 text-[11px] font-mono text-white/48">{conversation.model}</div>
-        </div>
         <div className="mx-auto flex max-w-[640px] flex-col gap-5">
           {conversation.messages.map((msg) => (
             <ChatMessage key={msg.id} role={msg.role} content={msg.content} model={msg.model} timestamp={msg.timestamp} isStreaming={false} />
           ))}
-          {isStreaming && streamedContent && (
+          {isStreaming && (
             <ChatMessage role="assistant" content={streamedContent} model={selectedModel.name} timestamp="" isStreaming={true} />
           )}
           {error && (

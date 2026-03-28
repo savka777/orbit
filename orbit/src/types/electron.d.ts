@@ -25,6 +25,7 @@ declare global {
       }>
       startOllama: () => Promise<boolean>
       pullModel: (modelName: string) => Promise<void>
+      deleteModel: (modelName: string) => Promise<void>
       chat: (
         model: string,
         messages: Array<{ role: string; content: string }>,

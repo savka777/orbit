@@ -1,26 +1,35 @@
+import { useState, useRef, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Download } from 'lucide-react'
+import type { Model } from '../types/models'
 import LiquidGradient from './LiquidGradient'
 
 type ModelCardProps = {
-  model: {
-    id: string
-    name: string
-    parameterCount: string
-    size: string
-    categories: string[]
-    description: string
-    downloaded: boolean
-    featured?: boolean
-  }
+  model: Model
   downloadProgress?: number
   onDownload: (modelId: string) => void
+  onDelete?: (modelId: string) => void
   variant?: 'default' | 'featured'
 }
 
-export default function ModelCard({ model, downloadProgress, onDownload, variant = 'default' }: ModelCardProps) {
+export default function ModelCard({ model, downloadProgress, onDownload, onDelete, variant = 'default' }: ModelCardProps) {
   const isDownloading = downloadProgress !== undefined && downloadProgress > 0 && !model.downloaded
   const isFeatured = variant === 'featured'
+  const [showRemove, setShowRemove] = useState(false)
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
+  const removeRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!showRemove) return
+    function handleClickOutside(e: MouseEvent) {
+      if (removeRef.current && !removeRef.current.contains(e.target as Node)) {
+        setShowRemove(false)
+        setConfirmingDelete(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [showRemove])
 
   if (isFeatured) {
     return (
@@ -43,9 +52,35 @@ export default function ModelCard({ model, downloadProgress, onDownload, variant
 
             <div className="shrink-0 ml-4">
               {model.downloaded ? (
-                <span className="rounded-full bg-white px-3 py-1 text-[11px] font-medium text-stone-900">
-                  Ready
-                </span>
+                <div className="relative" ref={removeRef}>
+                  <button
+                    onClick={() => setShowRemove(prev => !prev)}
+                    className="cursor-pointer rounded-full bg-white px-3 py-1 text-[11px] font-medium text-stone-900 transition-colors hover:bg-stone-100"
+                  >
+                    Ready
+                  </button>
+                  {showRemove && onDelete && (
+                    <div
+                      className="absolute right-0 top-full mt-1 z-20 rounded-2xl border border-white/8 bg-[rgba(27,28,32,0.96)] px-1 py-1"
+                      style={{ boxShadow: '0 20px 50px rgba(0, 0, 0, 0.4)' }}
+                    >
+                      <button
+                        onClick={() => {
+                          if (confirmingDelete) {
+                            onDelete(model.id)
+                            setShowRemove(false)
+                            setConfirmingDelete(false)
+                          } else {
+                            setConfirmingDelete(true)
+                          }
+                        }}
+                        className="cursor-pointer whitespace-nowrap rounded-lg px-3 py-1.5 text-[12px] transition-colors hover:bg-white/6 text-red-400"
+                      >
+                        {confirmingDelete ? `Remove ${model.name}?` : 'Remove'}
+                      </button>
+                    </div>
+                  )}
+                </div>
               ) : isDownloading ? (
                 <span className="text-[11px] font-mono text-white/52">
                   {downloadProgress}%
@@ -83,9 +118,35 @@ export default function ModelCard({ model, downloadProgress, onDownload, variant
           <div className="flex-1" />
           <div className="shrink-0">
             {model.downloaded ? (
-              <span className="rounded-full bg-white px-2.5 py-0.5 text-[11px] font-medium text-stone-900">
-                Ready
-              </span>
+              <div className="relative" ref={removeRef}>
+                <button
+                  onClick={() => setShowRemove(prev => !prev)}
+                  className="cursor-pointer rounded-full bg-white px-2.5 py-0.5 text-[11px] font-medium text-stone-900 transition-colors hover:bg-stone-100"
+                >
+                  Ready
+                </button>
+                {showRemove && onDelete && (
+                  <div
+                    className="absolute right-0 top-full mt-1 z-20 rounded-2xl border border-white/8 bg-[rgba(27,28,32,0.96)] px-1 py-1"
+                    style={{ boxShadow: '0 20px 50px rgba(0, 0, 0, 0.4)' }}
+                  >
+                    <button
+                      onClick={() => {
+                        if (confirmingDelete) {
+                          onDelete(model.id)
+                          setShowRemove(false)
+                          setConfirmingDelete(false)
+                        } else {
+                          setConfirmingDelete(true)
+                        }
+                      }}
+                      className="cursor-pointer whitespace-nowrap rounded-lg px-3 py-1.5 text-[12px] transition-colors hover:bg-white/6 text-red-400"
+                    >
+                      {confirmingDelete ? `Remove ${model.name}?` : 'Remove'}
+                    </button>
+                  </div>
+                )}
+              </div>
             ) : isDownloading ? (
               <span className="text-[11px] font-mono text-white/52">
                 {downloadProgress}%

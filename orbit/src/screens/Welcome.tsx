@@ -1,5 +1,3 @@
-import { FileText, Code, BarChart3 } from 'lucide-react'
-import { suggestions } from '../data/mock'
 import ChatInput from '../components/ChatInput'
 import SpiralAnimation from '../components/SpiralAnimation'
 
@@ -8,13 +6,10 @@ type WelcomeProps = {
   selectedModel: { id: string; name: string; parameterCount: string }
   downloadedModels: Array<{ id: string; name: string; parameterCount: string }>
   onSelectModel: (modelId: string) => void
-  onSuggestionClick: (title: string) => void
-}
-
-const iconMap: Record<string, React.ComponentType<{ className?: string; strokeWidth?: number }>> = {
-  FileText,
-  Code,
-  BarChart3,
+  ollamaStatus: 'not-installed' | 'installed-not-running' | 'running'
+  ollamaLoading: boolean
+  hasModels: boolean
+  onNavigateToHardware: () => void
 }
 
 export default function Welcome({
@@ -22,7 +17,10 @@ export default function Welcome({
   selectedModel,
   downloadedModels,
   onSelectModel,
-  onSuggestionClick,
+  ollamaStatus,
+  ollamaLoading,
+  hasModels,
+  onNavigateToHardware,
 }: WelcomeProps) {
   return (
     <div className="relative flex h-full min-h-0 w-full flex-col overflow-hidden">
@@ -31,12 +29,36 @@ export default function Welcome({
           <div className="mb-2 flex items-center justify-center rounded-full">
             <SpiralAnimation size={160} className="rounded-full" />
           </div>
-          <h1 className="text-center text-[36px] font-semibold tracking-[-0.025em] text-white">
+          <h1 className="text-center text-[36px] font-light italic tracking-[-0.025em] text-white" style={{ fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif" }}>
             Orbit
           </h1>
           <div className="text-center text-[28px] tracking-[-0.02em] text-white/45">
-            ai, free for all
+            your ai, your rules
           </div>
+
+          {ollamaLoading ? (
+            <div className="mt-4 flex items-center gap-1">
+              <span className="text-[13px] text-white/38">Loading</span>
+              <span className="flex gap-0.5">
+                <span className="h-1 w-1 rounded-full bg-white/38" style={{ animation: 'loading-dot 1.4s ease-in-out infinite' }} />
+                <span className="h-1 w-1 rounded-full bg-white/38" style={{ animation: 'loading-dot 1.4s ease-in-out 0.2s infinite' }} />
+                <span className="h-1 w-1 rounded-full bg-white/38" style={{ animation: 'loading-dot 1.4s ease-in-out 0.4s infinite' }} />
+              </span>
+              <style>{`
+                @keyframes loading-dot {
+                  0%, 80%, 100% { opacity: 0.2; }
+                  40% { opacity: 1; }
+                }
+              `}</style>
+            </div>
+          ) : !hasModels ? (
+            <button
+              onClick={onNavigateToHardware}
+              className="mt-4 cursor-pointer rounded-full border border-white/8 bg-white/4 px-4 py-1.5 text-[13px] text-white/58 transition-colors hover:bg-white/7 hover:text-white"
+            >
+              {ollamaStatus === 'not-installed' ? 'Set up your first model' : 'No models yet — browse models'}
+            </button>
+          ) : null}
         </div>
       </div>
 
@@ -65,14 +87,16 @@ export default function Welcome({
       </div>
       */}
 
-      <div className="shrink-0 pb-6">
-        <ChatInput
-          onSend={onSend}
-          selectedModel={selectedModel}
-          downloadedModels={downloadedModels}
-          onSelectModel={onSelectModel}
-        />
-      </div>
+      {hasModels ? (
+        <div className="shrink-0 pb-6">
+          <ChatInput
+            onSend={onSend}
+            selectedModel={selectedModel}
+            downloadedModels={downloadedModels}
+            onSelectModel={onSelectModel}
+          />
+        </div>
+      ) : null}
     </div>
   )
 }

@@ -46,12 +46,9 @@ export async function listOllamaModels(): Promise<unknown> {
 }
 
 export async function startOllama(): Promise<boolean> {
+  // Try the macOS app first, then fall back to `ollama serve` (Homebrew install)
   return new Promise((resolve) => {
-    exec('open -a Ollama', (error) => {
-      if (error) {
-        resolve(false)
-        return
-      }
+    function pollUntilReady() {
       let attempts = 0
       const poll = setInterval(async () => {
         attempts++
@@ -66,8 +63,24 @@ export async function startOllama(): Promise<boolean> {
           }
         }
       }, 1000)
+    }
+
+    exec('open -a Ollama', (error) => {
+      if (!error) {
+        pollUntilReady()
+        return
+      }
+      // macOS app not found — try ollama serve (Homebrew / CLI install)
+      const child = exec('ollama serve', () => {})
+      child.unref?.()
+      // Give the server a moment to start, then poll
+      setTimeout(pollUntilReady, 500)
     })
   })
+}
+
+export async function deleteModel(modelName: string): Promise<void> {
+  await httpRequest('DELETE', '/api/delete', JSON.stringify({ name: modelName }))
 }
 
 export function pullModel(modelName: string, win: BrowserWindow): Promise<void> {

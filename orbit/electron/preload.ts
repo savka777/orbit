@@ -8,6 +8,7 @@ contextBridge.exposeInMainWorld('orbit', {
   listOllamaModels: () => ipcRenderer.invoke('ollama:list-models'),
   startOllama: () => ipcRenderer.invoke('ollama:start'),
   pullModel: (modelName: string) => ipcRenderer.invoke('ollama:pull-model', modelName),
+  deleteModel: (modelName: string) => ipcRenderer.invoke('ollama:delete-model', modelName),
   chat: (model: string, messages: Array<{ role: string; content: string }>, conversationId: string) =>
     ipcRenderer.invoke('ollama:chat', { model, messages, conversationId }),
 

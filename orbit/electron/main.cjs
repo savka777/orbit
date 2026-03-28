@@ -59,8 +59,7 @@ async function listOllamaModels() {
 
 function startOllama() {
   return new Promise((resolve) => {
-    exec('open -a Ollama', (error) => {
-      if (error) { resolve(false); return }
+    function pollUntilReady() {
       let attempts = 0
       const poll = setInterval(async () => {
         attempts++
@@ -72,8 +71,19 @@ function startOllama() {
           if (attempts > 15) { clearInterval(poll); resolve(false) }
         }
       }, 1000)
+    }
+
+    exec('open -a Ollama', (error) => {
+      if (!error) { pollUntilReady(); return }
+      const child = exec('ollama serve', () => {})
+      if (child.unref) child.unref()
+      setTimeout(pollUntilReady, 500)
     })
   })
+}
+
+async function deleteModel(modelName) {
+  await httpRequest('DELETE', '/api/delete', JSON.stringify({ name: modelName }))
 }
 
 function pullModel(modelName, win) {
@@ -275,6 +285,7 @@ app.whenReady().then(() => {
   ipcMain.handle('ollama:pull-model', (_event, modelName) => {
     if (mainWindow) return pullModel(modelName, mainWindow)
   })
+  ipcMain.handle('ollama:delete-model', (_event, modelName) => deleteModel(modelName))
   ipcMain.handle('ollama:chat', (_event, { model, messages, conversationId }) => {
     if (mainWindow) return streamChat(model, messages, mainWindow, conversationId)
   })

@@ -11,7 +11,7 @@ const mockSystemProfile: SystemProfile = {
 
 const mockScoredModel: ScoredModel = {
   name: 'llama3.2', provider: 'meta', parameter_count: 7_000_000_000,
-  fit_level: 'perfect', run_mode: 'gpu', score: 0.95,
+  fit_level: 'perfect', run_mode: 'gpu', score: 95,
   score_components: { quality: 0.9, speed: 0.9, fit: 1.0, context: 0.9 },
   estimated_tps: 45, best_quant: 'Q4_0', memory_required_gb: 4.1,
   memory_available_gb: 16, utilization_pct: 25, context_length: 8192, gguf_sources: [],
