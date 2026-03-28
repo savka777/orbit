@@ -25,7 +25,7 @@ export default function Chat({
   const scrollContainerRef = useRef<HTMLDivElement>(null)
 
   const { sendMessage, isStreaming, streamedContent, error } = useChat({
-    model: selectedModel.name,
+    model: selectedModel.id,
     conversationId: conversation.id,
     onStreamComplete: (content) => {
       const now = new Date()
