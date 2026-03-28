@@ -59,8 +59,7 @@ async function listOllamaModels() {
 
 function startOllama() {
   return new Promise((resolve) => {
-    exec('open -a Ollama', (error) => {
-      if (error) { resolve(false); return }
+    function pollUntilReady() {
       let attempts = 0
       const poll = setInterval(async () => {
         attempts++
@@ -72,6 +71,13 @@ function startOllama() {
           if (attempts > 15) { clearInterval(poll); resolve(false) }
         }
       }, 1000)
+    }
+
+    exec('open -a Ollama', (error) => {
+      if (!error) { pollUntilReady(); return }
+      const child = exec('ollama serve', () => {})
+      if (child.unref) child.unref()
+      setTimeout(pollUntilReady, 500)
     })
   })
 }

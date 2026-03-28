@@ -29,7 +29,7 @@ export default function Welcome({
           <div className="mb-2 flex items-center justify-center rounded-full">
             <SpiralAnimation size={160} className="rounded-full" />
           </div>
-          <h1 className="text-center text-[36px] tracking-[-0.025em] text-white" style={{ fontFamily: "'Pacifico', cursive" }}>
+          <h1 className="text-center text-[36px] font-light italic tracking-[-0.025em] text-white" style={{ fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif" }}>
             Orbit
           </h1>
           <div className="text-center text-[28px] tracking-[-0.02em] text-white/45">
