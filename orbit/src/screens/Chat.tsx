@@ -76,7 +76,7 @@ export default function Chat({
 
   return (
     <div className="flex flex-1 min-h-0 flex-col">
-      <div ref={scrollContainerRef} className="flex-1 min-h-0 overflow-y-auto px-6 pb-6">
+      <div ref={scrollContainerRef} className="flex-1 min-h-0 overflow-y-auto px-6 pt-2 pb-6">
         <div className="mx-auto mb-6 flex max-w-[640px] items-center justify-between">
           <div>
             <div className="text-[11px] uppercase tracking-[0.18em] text-white/26">Conversation</div>
