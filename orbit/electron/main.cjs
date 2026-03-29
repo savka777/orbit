@@ -302,6 +302,12 @@ async function streamChat(model, messages, win, conversationId) {
     const queries = extractSearchQueries(response)
     if (queries.length === 0) break
 
+    // Show "Searching..." immediately before the search starts
+    win.webContents.send('ollama:chat-chunk', {
+      conversationId,
+      chunk: { message: { content: '\n\n*Searching the web...*\n\n' }, done: false },
+    })
+
     const searchResults = []
     for (const query of queries) {
       try {
@@ -320,11 +326,6 @@ async function streamChat(model, messages, win, conversationId) {
         searchResults.push(`Search for "${query}" failed. Please try answering without search results.`)
       }
     }
-
-    win.webContents.send('ollama:chat-chunk', {
-      conversationId,
-      chunk: { message: { content: '\n\n*Searching the web...*\n\n' }, done: false },
-    })
 
     currentMessages = [
       ...currentMessages,
