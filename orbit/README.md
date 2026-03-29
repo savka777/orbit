@@ -1,73 +1,40 @@
-# React + TypeScript + Vite
+# Orbit
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+**Your AI, your rules.**
 
-Currently, two official plugins are available:
+Run AI models on your own hardware. No cloud. No subscriptions. No one reading your conversations. Just you and an AI that lives on your machine.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+Orbit is a macOS desktop app that makes local AI simple. It scans your hardware, recommends the best model for your system, and lets you chat — with web search built in. Everything runs locally through [Ollama](https://ollama.com).
 
-## React Compiler
+---
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+**What it does**
 
-## Expanding the ESLint configuration
+- Detects your hardware and recommends models that actually run well on it
+- Downloads and manages local models — one click
+- Chat with streaming responses and markdown rendering
+- Web search built in — ask about weather, news, anything current
+- Your conversations stay on your machine. Period.
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+---
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+**Get started**
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+```bash
+# Install Ollama first
+brew install ollama
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+# Clone and run
+git clone https://github.com/savka777/orbit.git
+cd orbit/orbit
+npm install
+npm run dev:electron
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Orbit auto-detects Ollama on launch. If you already have models, you're ready to chat.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+---
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+**Built with** Electron, React, TypeScript, Tailwind CSS, Ollama, LLMFit, Open-Meteo
+
+**License** MIT
