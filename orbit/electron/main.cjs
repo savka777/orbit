@@ -198,8 +198,17 @@ function formatSearchResults(results) {
 }
 
 function extractSearchQueries(text) {
-  const matches = [...text.matchAll(/<search>([\s\S]*?)<\/search>/g)]
-  return matches.map(m => m[1].trim())
+  // Match proper <search>query</search> tags
+  const proper = [...text.matchAll(/<search>([\s\S]*?)<\/search>/gi)]
+  if (proper.length > 0) return proper.map(m => m[1].trim())
+
+  // Fallback: catch malformed tags like <weather in New York> or <search query here>
+  const malformed = [...text.matchAll(/<([^>]{3,80})>/g)]
+    .map(m => m[1].trim())
+    .filter(t => !t.startsWith('/') && !t.startsWith('!') && !/^[a-z]+\s*$/i.test(t))
+  if (malformed.length > 0) return malformed
+
+  return []
 }
 
 function streamOnce(model, messages, win, conversationId) {
@@ -211,9 +220,8 @@ function streamOnce(model, messages, win, conversationId) {
       headers: { 'Content-Type': 'application/json' },
     }
     let fullContent = ''
-    let visibleContent = ''
-    let insideTag = false
-    let tagBuffer = ''
+    let insideAngleBracket = false
+    let bracketBuffer = ''
 
     const req = http.request(options, (res) => {
       res.on('data', (chunk) => {
@@ -224,32 +232,38 @@ function streamOnce(model, messages, win, conversationId) {
             const token = parsed.message?.content || ''
             fullContent += token
 
-            // Filter <search>...</search> tags from what the user sees
+            // Hide anything inside < > from the user (search tags, malformed tags)
             for (const char of token) {
-              if (!insideTag && tagBuffer.length === 0 && char === '<') {
-                tagBuffer = '<'
-              } else if (tagBuffer.length > 0 && !insideTag) {
-                tagBuffer += char
-                if (tagBuffer === '<search>') {
-                  insideTag = true
-                  tagBuffer = ''
-                } else if (tagBuffer.length >= 8 || char === ' ' || char === '\n') {
-                  // Not a search tag — flush the buffer as visible content
-                  visibleContent += tagBuffer
+              if (char === '<' && !insideAngleBracket) {
+                insideAngleBracket = true
+                bracketBuffer = '<'
+              } else if (insideAngleBracket) {
+                bracketBuffer += char
+                if (char === '>') {
+                  // Tag closed — check if it looks like a search/tool tag or HTML
+                  const isSearchTag = /^<\/?search/i.test(bracketBuffer)
+                  const isMalformedSearch = bracketBuffer.length > 10 && !bracketBuffer.startsWith('</')
+                  if (isSearchTag || isMalformedSearch) {
+                    // Hide it — don't send to renderer
+                  } else {
+                    // Regular content with angle brackets (e.g. code) — show it
+                    win.webContents.send('ollama:chat-chunk', {
+                      conversationId,
+                      chunk: { message: { content: bracketBuffer }, done: false },
+                    })
+                  }
+                  insideAngleBracket = false
+                  bracketBuffer = ''
+                } else if (bracketBuffer.length > 100) {
+                  // Too long to be a tag — flush as content
                   win.webContents.send('ollama:chat-chunk', {
                     conversationId,
-                    chunk: { message: { content: tagBuffer }, done: false },
+                    chunk: { message: { content: bracketBuffer }, done: false },
                   })
-                  tagBuffer = ''
-                }
-              } else if (insideTag) {
-                tagBuffer += char
-                if (tagBuffer.endsWith('</search>')) {
-                  insideTag = false
-                  tagBuffer = ''
+                  insideAngleBracket = false
+                  bracketBuffer = ''
                 }
               } else {
-                visibleContent += char
                 win.webContents.send('ollama:chat-chunk', {
                   conversationId,
                   chunk: { message: { content: char }, done: false },
@@ -260,12 +274,10 @@ function streamOnce(model, messages, win, conversationId) {
         }
       })
       res.on('end', () => {
-        // Flush any remaining buffer
-        if (tagBuffer.length > 0 && !insideTag) {
-          visibleContent += tagBuffer
+        if (bracketBuffer.length > 0) {
           win.webContents.send('ollama:chat-chunk', {
             conversationId,
-            chunk: { message: { content: tagBuffer }, done: false },
+            chunk: { message: { content: bracketBuffer }, done: false },
           })
         }
         resolve(fullContent)
