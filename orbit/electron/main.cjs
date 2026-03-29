@@ -180,18 +180,65 @@ function streamOnce(model, messages, win, conversationId) {
       headers: { 'Content-Type': 'application/json' },
     }
     let fullContent = ''
+    let visibleContent = ''
+    let insideTag = false
+    let tagBuffer = ''
+
     const req = http.request(options, (res) => {
       res.on('data', (chunk) => {
         const lines = chunk.toString().split('\n').filter(Boolean)
         for (const line of lines) {
           try {
             const parsed = JSON.parse(line)
-            fullContent += parsed.message?.content || ''
-            win.webContents.send('ollama:chat-chunk', { conversationId, chunk: parsed })
+            const token = parsed.message?.content || ''
+            fullContent += token
+
+            // Filter <search>...</search> tags from what the user sees
+            for (const char of token) {
+              if (!insideTag && tagBuffer.length === 0 && char === '<') {
+                tagBuffer = '<'
+              } else if (tagBuffer.length > 0 && !insideTag) {
+                tagBuffer += char
+                if (tagBuffer === '<search>') {
+                  insideTag = true
+                  tagBuffer = ''
+                } else if (tagBuffer.length >= 8 || char === ' ' || char === '\n') {
+                  // Not a search tag — flush the buffer as visible content
+                  visibleContent += tagBuffer
+                  win.webContents.send('ollama:chat-chunk', {
+                    conversationId,
+                    chunk: { message: { content: tagBuffer }, done: false },
+                  })
+                  tagBuffer = ''
+                }
+              } else if (insideTag) {
+                tagBuffer += char
+                if (tagBuffer.endsWith('</search>')) {
+                  insideTag = false
+                  tagBuffer = ''
+                }
+              } else {
+                visibleContent += char
+                win.webContents.send('ollama:chat-chunk', {
+                  conversationId,
+                  chunk: { message: { content: char }, done: false },
+                })
+              }
+            }
           } catch { /* skip */ }
         }
       })
-      res.on('end', () => resolve(fullContent))
+      res.on('end', () => {
+        // Flush any remaining buffer
+        if (tagBuffer.length > 0 && !insideTag) {
+          visibleContent += tagBuffer
+          win.webContents.send('ollama:chat-chunk', {
+            conversationId,
+            chunk: { message: { content: tagBuffer }, done: false },
+          })
+        }
+        resolve(fullContent)
+      })
       res.on('error', reject)
     })
     req.on('error', reject)
