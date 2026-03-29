@@ -6,7 +6,8 @@
 
 <p align="center">
   local AI that scans your hardware, recommends the best models,<br/>
-  and runs them privately on your machine.
+  and runs them privately on your machine.<br/><br/>
+  shipping with <a href="https://arxiv.org/abs/2504.19874">TurboQuant</a> — run larger models on lower-spec hardware.
 </p>
 
 <p align="center">
