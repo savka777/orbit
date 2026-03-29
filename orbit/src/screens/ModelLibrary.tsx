@@ -289,7 +289,7 @@ export default function ModelLibrary({
         )}
 
         {/* Top Pick — featured card */}
-        {topPick && activeFilter !== 'installed' && (
+        {topPick && (
           <div className="mb-6">
             <CuratedModelCard
               model={topPick}
