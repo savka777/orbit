@@ -113,22 +113,42 @@ function pullModel(modelName, win) {
   })
 }
 
-const TOOL_SYSTEM_PROMPT = `You have access to a web search tool. Rules:
+// ─── Tool Definitions (Ollama native tool calling) ───────
 
-1. For questions about current events, weather, news, prices, or real-time data: search first by outputting <search>query</search> as the FIRST thing in your response, with no text before it.
-2. After receiving search results, answer using ONLY the information from the results. Be concise.
-3. For follow-up questions or clarifications about something you already answered, use the conversation history. Do NOT search again unless the user asks about something new.
-4. For general knowledge questions, answer normally without searching.
-5. Never say "I don't have access to real-time data" — you DO, via the search tool.
-6. Never recommend the user visit websites — just answer their question directly.`
+const TOOL_DEFS = [
+  {
+    type: 'function',
+    function: {
+      name: 'web_search',
+      description: 'Search the web for current information. Use for news, events, prices, or anything you do not know.',
+      parameters: {
+        type: 'object',
+        required: ['query'],
+        properties: {
+          query: { type: 'string', description: 'The search query' },
+        },
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'get_weather',
+      description: 'Get the current weather for a city.',
+      parameters: {
+        type: 'object',
+        required: ['city'],
+        properties: {
+          city: { type: 'string', description: 'City name, e.g. "New York"' },
+        },
+      },
+    },
+  },
+]
 
-async function fetchUrl(url) {
-  const res = await fetch(url, {
-    headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36' },
-    signal: AbortSignal.timeout(10000),
-  })
-  return await res.text()
-}
+const SYSTEM_PROMPT = `You are a helpful assistant. Answer questions concisely and directly. Never say you cannot access real-time data — you have tools for that. Never recommend the user visit websites — just answer their question.`
+
+// ─── Tool Implementations ────────────────────────────────
 
 const WEATHER_CODES = {
   0: 'Clear sky', 1: 'Mainly clear', 2: 'Partly cloudy', 3: 'Overcast',
@@ -138,80 +158,49 @@ const WEATHER_CODES = {
   81: 'Moderate rain showers', 82: 'Violent rain showers', 95: 'Thunderstorm',
 }
 
-async function weatherSearch(query) {
-  // Extract city name from query
-  const cityMatch = query.match(/(?:weather|temperature|forecast)(?:\s+(?:in|for|at))?\s+(.+?)(?:\s+(?:today|now|right now|currently|current))?$/i)
-  const city = cityMatch ? cityMatch[1].trim() : query.replace(/weather|temperature|forecast|today|now|current/gi, '').trim()
-  if (!city) return null
+async function executeGetWeather(city) {
+  const geoRes = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1`)
+  const geoData = await geoRes.json()
+  if (!geoData.results || geoData.results.length === 0) return `Could not find city "${city}".`
 
-  try {
-    // Geocode the city
-    const geoRes = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1`)
-    const geoData = await geoRes.json()
-    if (!geoData.results || geoData.results.length === 0) return null
-
-    const { latitude, longitude, name, country } = geoData.results[0]
-
-    // Get current weather
-    const wxRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,apparent_temperature,wind_speed_10m,weather_code,relative_humidity_2m&daily=temperature_2m_max,temperature_2m_min&temperature_unit=celsius&forecast_days=1`)
-    const wxData = await wxRes.json()
-    const c = wxData.current
-    const d = wxData.daily
-
-    const condition = WEATHER_CODES[c.weather_code] || 'Unknown'
-    return `Current weather in ${name}, ${country}:
-- Temperature: ${c.temperature_2m}°C (feels like ${c.apparent_temperature}°C)
-- Conditions: ${condition}
-- Humidity: ${c.relative_humidity_2m}%
-- Wind: ${c.wind_speed_10m} km/h
-- Today's high: ${d.temperature_2m_max[0]}°C, low: ${d.temperature_2m_min[0]}°C`
-  } catch {
-    return null
-  }
+  const { latitude, longitude, name, country } = geoData.results[0]
+  const wxRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,apparent_temperature,wind_speed_10m,weather_code,relative_humidity_2m&daily=temperature_2m_max,temperature_2m_min&temperature_unit=celsius&forecast_days=1`)
+  const wxData = await wxRes.json()
+  const c = wxData.current
+  const d = wxData.daily
+  const condition = WEATHER_CODES[c.weather_code] || 'Unknown'
+  return `Current weather in ${name}, ${country}: ${c.temperature_2m}°C (feels like ${c.apparent_temperature}°C), ${condition}, Humidity ${c.relative_humidity_2m}%, Wind ${c.wind_speed_10m} km/h. High ${d.temperature_2m_max[0]}°C, Low ${d.temperature_2m_min[0]}°C.`
 }
 
-function isWeatherQuery(query) {
-  return /\b(weather|temperature|forecast|degrees|celsius|fahrenheit)\b/i.test(query)
-}
-
-async function webSearch(query, maxResults = 5) {
-  const encoded = encodeURIComponent(query)
-  const html = await fetchUrl(`https://html.duckduckgo.com/html/?q=${encoded}`)
+async function executeWebSearch(query) {
+  const html = await (await fetch(`https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`, {
+    headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36' },
+    signal: AbortSignal.timeout(10000),
+  })).text()
   const results = []
   const blocks = html.split('result results_links')
-  for (let i = 1; i < blocks.length && results.length < maxResults; i++) {
-    const block = blocks[i]
-    const titleMatch = block.match(/class="result__a"[^>]*>([\s\S]*?)<\/a>/)
-    const snippetMatch = block.match(/class="result__snippet"[^>]*>([\s\S]*?)<\/a/)
-    if (titleMatch) {
-      const title = titleMatch[1].replace(/<[^>]+>/g, '').replace(/&#x27;/g, "'").replace(/&amp;/g, '&').replace(/&quot;/g, '"').trim()
-      const snippet = snippetMatch ? snippetMatch[1].replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').replace(/&#x27;/g, "'").replace(/&amp;/g, '&').replace(/&quot;/g, '"').trim() : ''
-      results.push({ title, snippet })
+  for (let i = 1; i < blocks.length && results.length < 5; i++) {
+    const b = blocks[i]
+    const title = b.match(/class="result__a"[^>]*>([\s\S]*?)<\/a>/)
+    const snippet = b.match(/class="result__snippet"[^>]*>([\s\S]*?)<\/a/)
+    if (title) {
+      results.push(`${title[1].replace(/<[^>]+>/g, '').trim()}: ${snippet ? snippet[1].replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim() : ''}`)
     }
   }
-  return results
+  return results.length > 0 ? results.join('\n') : 'No results found.'
 }
 
-function formatSearchResults(results) {
-  if (results.length === 0) return 'No search results found.'
-  return results.map((r, i) => `[${i + 1}] ${r.title}\n${r.snippet}`).join('\n\n')
+async function executeTool(name, args) {
+  switch (name) {
+    case 'get_weather': return executeGetWeather(args.city || '')
+    case 'web_search': return executeWebSearch(args.query || '')
+    default: return `Unknown tool: ${name}`
+  }
 }
 
-function extractSearchQueries(text) {
-  // Match proper <search>query</search> tags
-  const proper = [...text.matchAll(/<search>([\s\S]*?)<\/search>/gi)]
-  if (proper.length > 0) return proper.map(m => m[1].trim())
+// ─── Streaming Chat with Native Tool Calling ─────────────
 
-  // Fallback: catch malformed tags like <weather in New York> or <search query here>
-  const malformed = [...text.matchAll(/<([^>]{3,80})>/g)]
-    .map(m => m[1].trim())
-    .filter(t => !t.startsWith('/') && !t.startsWith('!') && !/^[a-z]+\s*$/i.test(t))
-  if (malformed.length > 0) return malformed
-
-  return []
-}
-
-function streamOnce(model, messages, win, conversationId) {
+function streamResponse(model, messages, win, conversationId) {
   return new Promise((resolve, reject) => {
     const url = new URL('/api/chat', OLLAMA_HOST)
     const body = JSON.stringify({ model, messages, stream: true })
@@ -219,74 +208,38 @@ function streamOnce(model, messages, win, conversationId) {
       hostname: url.hostname, port: url.port, path: url.pathname, method: 'POST',
       headers: { 'Content-Type': 'application/json' },
     }
-    let fullContent = ''
-    let insideAngleBracket = false
-    let insideSearchBlock = false
-    let bracketBuffer = ''
-
     const req = http.request(options, (res) => {
       res.on('data', (chunk) => {
         const lines = chunk.toString().split('\n').filter(Boolean)
         for (const line of lines) {
           try {
             const parsed = JSON.parse(line)
-            const token = parsed.message?.content || ''
-            fullContent += token
-
-            // Filter search tags and buffer tokens (not char-by-char)
-            let safeBuffer = ''
-            for (const char of token) {
-              if (char === '<' && !insideAngleBracket) {
-                if (safeBuffer) {
-                  win.webContents.send('ollama:chat-chunk', {
-                    conversationId,
-                    chunk: { message: { content: safeBuffer }, done: false },
-                  })
-                  safeBuffer = ''
-                }
-                insideAngleBracket = true
-                bracketBuffer = '<'
-              } else if (insideAngleBracket) {
-                bracketBuffer += char
-                if (char === '>') {
-                  const isSearchOpen = /^<search/i.test(bracketBuffer)
-                  const isSearchClose = /^<\/search/i.test(bracketBuffer)
-                  const isMalformedSearch = bracketBuffer.length > 10 && !bracketBuffer.startsWith('</')
-                  if (isSearchOpen || isMalformedSearch) {
-                    insideSearchBlock = true
-                  } else if (isSearchClose) {
-                    insideSearchBlock = false
-                  } else if (!insideSearchBlock) {
-                    safeBuffer += bracketBuffer
-                  }
-                  insideAngleBracket = false
-                  bracketBuffer = ''
-                } else if (bracketBuffer.length > 100) {
-                  if (!insideSearchBlock) safeBuffer += bracketBuffer
-                  insideAngleBracket = false
-                  bracketBuffer = ''
-                }
-              } else if (!insideSearchBlock) {
-                safeBuffer += char
-              }
-            }
-            if (safeBuffer) {
-              win.webContents.send('ollama:chat-chunk', {
-                conversationId,
-                chunk: { message: { content: safeBuffer }, done: false },
-              })
-            }
+            win.webContents.send('ollama:chat-chunk', { conversationId, chunk: parsed })
           } catch { /* skip */ }
         }
       })
+      res.on('end', () => resolve())
+      res.on('error', reject)
+    })
+    req.on('error', reject)
+    req.write(body)
+    req.end()
+  })
+}
+
+function toolCallRequest(model, messages, tools) {
+  return new Promise((resolve, reject) => {
+    const url = new URL('/api/chat', OLLAMA_HOST)
+    const body = JSON.stringify({ model, messages, tools, stream: false })
+    const options = {
+      hostname: url.hostname, port: url.port, path: url.pathname, method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    }
+    const req = http.request(options, (res) => {
+      let data = ''
+      res.on('data', (chunk) => (data += chunk))
       res.on('end', () => {
-        if (bracketBuffer.length > 0 && !insideSearchBlock) {
-          win.webContents.send('ollama:chat-chunk', {
-            conversationId,
-            chunk: { message: { content: bracketBuffer }, done: false },
-          })
-        }
-        resolve(fullContent)
+        try { resolve(JSON.parse(data)) } catch { reject(new Error('Invalid JSON response')) }
       })
       res.on('error', reject)
     })
@@ -297,55 +250,70 @@ function streamOnce(model, messages, win, conversationId) {
 }
 
 async function streamChat(model, messages, win, conversationId) {
-  const messagesWithSystem = [
-    { role: 'system', content: TOOL_SYSTEM_PROMPT },
+  const allMessages = [
+    { role: 'system', content: SYSTEM_PROMPT },
     ...messages,
   ]
 
-  let currentMessages = messagesWithSystem
-  for (let round = 0; round < 3; round++) {
-    const response = await streamOnce(model, currentMessages, win, conversationId)
-    const queries = extractSearchQueries(response)
-    if (queries.length === 0) break
-
-    // Show "Searching..." immediately before the search starts
-    win.webContents.send('ollama:chat-chunk', {
-      conversationId,
-      chunk: { message: { content: '\n\n*Searching the web...*\n\n' }, done: false },
-    })
-
-    const searchResults = []
-    for (const query of queries) {
-      try {
-        // Try weather API first for weather queries
-        if (isWeatherQuery(query)) {
-          const weatherResult = await weatherSearch(query)
-          if (weatherResult) {
-            searchResults.push(weatherResult)
-            continue
-          }
-        }
-        // Fall back to DDG web search
-        const results = await webSearch(query)
-        searchResults.push(`Search results for "${query}":\n${formatSearchResults(results)}`)
-      } catch {
-        searchResults.push(`Search for "${query}" failed. Please try answering without search results.`)
-      }
-    }
-
-    // Reset renderer content before streaming the answer
-    win.webContents.send('ollama:chat-chunk', {
-      conversationId,
-      chunk: { message: { content: '' }, done: false, reset: true },
-    })
-
-    currentMessages = [
-      ...currentMessages,
-      { role: 'assistant', content: response },
-      { role: 'user', content: searchResults.join('\n\n') + '\n\nNow answer the original question using the search results above. Be concise and direct.' },
-    ]
+  // Step 1: Ask model with tools (non-streaming to get structured tool_calls)
+  let response
+  try {
+    response = await toolCallRequest(model, allMessages, TOOL_DEFS)
+  } catch {
+    // Model doesn't support tools — fall back to simple streaming
+    await streamResponse(model, allMessages, win, conversationId)
+    win.webContents.send('ollama:chat-done', { conversationId })
+    return
   }
 
+  const msg = response.message
+  if (!msg) {
+    win.webContents.send('ollama:chat-done', { conversationId })
+    return
+  }
+
+  // Step 2: If no tool calls, stream the text content and done
+  if (!msg.tool_calls || msg.tool_calls.length === 0) {
+    // Send the non-streamed response as a single chunk
+    if (msg.content) {
+      win.webContents.send('ollama:chat-chunk', {
+        conversationId,
+        chunk: { message: { content: msg.content }, done: false },
+      })
+    }
+    win.webContents.send('ollama:chat-done', { conversationId })
+    return
+  }
+
+  // Step 3: Execute tool calls
+  win.webContents.send('ollama:chat-chunk', {
+    conversationId,
+    chunk: { message: { content: '*Searching...*\n\n' }, done: false },
+  })
+
+  const toolMessages = [
+    ...allMessages,
+    msg, // assistant message with tool_calls
+  ]
+
+  for (const tc of msg.tool_calls) {
+    const fn = tc.function
+    let result
+    try {
+      result = await executeTool(fn.name, fn.arguments || {})
+    } catch (e) {
+      result = `Tool error: ${e.message || e}`
+    }
+    toolMessages.push({ role: 'tool', content: result })
+  }
+
+  // Step 4: Reset and stream the final answer with tool results in context
+  win.webContents.send('ollama:chat-chunk', {
+    conversationId,
+    chunk: { message: { content: '' }, done: false, reset: true },
+  })
+
+  await streamResponse(model, toolMessages, win, conversationId)
   win.webContents.send('ollama:chat-done', { conversationId })
 }
 
