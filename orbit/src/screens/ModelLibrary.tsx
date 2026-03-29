@@ -1,16 +1,16 @@
-import { useState } from 'react'
-import { Search, Cpu, MemoryStick, Monitor, RefreshCw, ChevronDown } from 'lucide-react'
+import { useState, useMemo } from 'react'
+import { Search, Cpu, MemoryStick, Monitor, RefreshCw, ChevronDown, Download } from 'lucide-react'
 import type { Model, HardwareSpec } from '../types/models'
 import type { SystemProfile } from '../types/llmfit'
 import type { OllamaStatus } from '../types/ollama'
-import { isGeneralPurpose } from '../utils/modelAdapter'
+import { getRecommendedModels, getAllFittingModels, type CuratedModel } from '../data/models'
 import ModelCard from '../components/ModelCard'
 import OrbitPulse from '../components/OrbitPulse'
 
-type Filter = 'recommended' | 'installed' | 'all' | 'small' | 'medium' | 'large'
+type Filter = 'recommended' | 'installed' | 'all'
 
 type ModelLibraryProps = {
-  models: Model[]
+  models: Model[]          // Installed Ollama models (from useModels)
   downloadProgress: Record<string, number>
   onDownload: (modelId: string) => void
   onDelete: (modelId: string) => void
@@ -26,9 +26,6 @@ const filters: { key: Filter; label: string }[] = [
   { key: 'recommended', label: 'Recommended' },
   { key: 'installed', label: 'Installed' },
   { key: 'all', label: 'All' },
-  { key: 'small', label: '<5 GB' },
-  { key: 'medium', label: '5-20 GB' },
-  { key: 'large', label: '20 GB+' },
 ]
 
 const iconMap: Record<string, React.ComponentType<{ className?: string; strokeWidth?: number }>> = {
@@ -79,33 +76,98 @@ function mapSystemToSpecs(system: SystemProfile): HardwareSpec[] {
   return specs
 }
 
-function parseSize(size: string): number {
-  const match = size.match(/([\d.]+)\s*(GB|MB|TB)/i)
-  if (!match) return 0
-  const value = parseFloat(match[1])
-  const unit = match[2].toUpperCase()
-  if (unit === 'TB') return value * 1000
-  if (unit === 'MB') return value / 1000
-  return value
-}
-
-function matchesFilter(model: Model, filter: Filter): boolean {
-  switch (filter) {
-    case 'all':
-      return true
-    case 'recommended':
-      return (model.fitLevel === 'perfect' || model.fitLevel === 'good') && !model.downloaded
-    case 'installed':
-      return model.downloaded
-    case 'small':
-      return parseSize(model.size) < 5
-    case 'medium': {
-      const s = parseSize(model.size)
-      return s >= 5 && s <= 20
-    }
-    case 'large':
-      return parseSize(model.size) > 20
+function CuratedModelCard({
+  model,
+  isInstalled,
+  isDownloading,
+  progress,
+  onDownload,
+  variant = 'default',
+}: {
+  model: CuratedModel
+  isInstalled: boolean
+  isDownloading: boolean
+  progress?: number
+  onDownload: (id: string) => void
+  variant?: 'default' | 'featured'
+}) {
+  if (variant === 'featured') {
+    return (
+      <div className="app-card relative overflow-hidden rounded-[22px] p-5">
+        <div className="relative z-10">
+          <div className="mb-2">
+            <span className="text-[11px] font-medium text-white/55">Best for your system</span>
+          </div>
+          <h3 className="text-[18px] font-semibold text-stone-50">{model.name}</h3>
+          <p className="mt-1 text-[13px] text-white/55">{model.description}</p>
+          <div className="mt-3 flex items-center gap-3">
+            <span className="text-[12px] text-white/32">{model.parameterCount}</span>
+            <span className="text-[12px] text-white/32">{model.ramRequired} GB</span>
+            <span className="text-[12px] text-white/32">{model.provider}</span>
+            {model.toolCalling && (
+              <span className="rounded-full bg-[#5d79ff]/15 px-2 py-0.5 text-[10px] font-medium text-[#5d79ff]">Tools</span>
+            )}
+          </div>
+          <div className="mt-4">
+            {isInstalled ? (
+              <span className="rounded-full bg-[#5d79ff]/15 px-3 py-1 text-[12px] font-medium text-[#5d79ff]">Installed</span>
+            ) : isDownloading ? (
+              <div className="flex items-center gap-2">
+                <div className="h-1.5 w-32 overflow-hidden rounded-full bg-white/10">
+                  <div className="h-full rounded-full bg-[#5d79ff] transition-all" style={{ width: `${progress || 0}%` }} />
+                </div>
+                <span className="text-[11px] text-white/38">{progress || 0}%</span>
+              </div>
+            ) : (
+              <button
+                onClick={() => onDownload(model.ollamaId)}
+                className="flex cursor-pointer items-center gap-1.5 rounded-full bg-white px-4 py-1.5 text-[12px] font-medium text-stone-900 transition-colors hover:bg-stone-100 active:scale-[0.97]"
+              >
+                <Download className="h-3 w-3" strokeWidth={1.5} />
+                Download
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    )
   }
+
+  return (
+    <div className="app-card app-card-hover rounded-[22px] p-4">
+      <div className="flex items-start justify-between">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <h3 className="text-[13px] font-medium text-stone-50">{model.name}</h3>
+            {model.toolCalling && (
+              <span className="rounded-full bg-[#5d79ff]/15 px-1.5 py-0.5 text-[9px] font-medium text-[#5d79ff]">Tools</span>
+            )}
+          </div>
+          <p className="mt-0.5 text-[12px] text-white/42">{model.description}</p>
+          <div className="mt-2 flex items-center gap-2">
+            <span className="text-[11px] text-white/28">{model.parameterCount}</span>
+            <span className="text-[11px] text-white/28">{model.ramRequired} GB</span>
+            <span className="text-[11px] text-white/28">{model.provider}</span>
+          </div>
+        </div>
+        <div className="ml-3 shrink-0">
+          {isInstalled ? (
+            <span className="rounded-full bg-[#5d79ff]/15 px-2.5 py-0.5 text-[11px] font-medium text-[#5d79ff]">Installed</span>
+          ) : isDownloading ? (
+            <span className="text-[11px] text-white/38">{progress || 0}%</span>
+          ) : (
+            <button
+              onClick={() => onDownload(model.ollamaId)}
+              className="flex cursor-pointer items-center gap-1 rounded-full border border-white/8 bg-white/4 px-3 py-1 text-[11px] text-white/58 transition-colors hover:bg-white/7 hover:text-white active:scale-[0.97]"
+            >
+              <Download className="h-3 w-3" strokeWidth={1.5} />
+              Get
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  )
 }
 
 export default function ModelLibrary({
@@ -120,9 +182,34 @@ export default function ModelLibrary({
   scanError,
   ollamaStatus,
 }: ModelLibraryProps) {
-  const [activeFilter, setActiveFilter] = useState<Filter>('all')
+  const [activeFilter, setActiveFilter] = useState<Filter>('recommended')
   const [searchQuery, setSearchQuery] = useState('')
   const [showAllModels, setShowAllModels] = useState(false)
+
+  const availableRam = systemProfile?.total_ram_gb ?? 16 // default 16 if no scan
+  const installedIds = useMemo(() => new Set(models.filter(m => m.downloaded).map(m => m.id)), [models])
+
+  const recommended = useMemo(() => getRecommendedModels(availableRam), [availableRam])
+  const allCurated = useMemo(() => getAllFittingModels(availableRam), [availableRam])
+
+  const topPick = recommended.find(m => !installedIds.has(m.ollamaId)) ?? null
+  const installedModels = models.filter(m => m.downloaded)
+
+  const specs = systemProfile ? mapSystemToSpecs(systemProfile) : []
+
+  // Filter curated models for catalog
+  const query = searchQuery.toLowerCase().trim()
+  const catalogSource = showAllModels ? allCurated : recommended
+  const catalogModels = catalogSource
+    .filter(m => {
+      if (activeFilter === 'installed') return installedIds.has(m.ollamaId)
+      if (activeFilter === 'recommended') return !installedIds.has(m.ollamaId)
+      return true
+    })
+    .filter(m => m !== topPick || activeFilter !== 'recommended')
+    .filter(m => !query || m.name.toLowerCase().includes(query) || m.description.toLowerCase().includes(query) || m.provider.toLowerCase().includes(query))
+
+  const specialistCount = allCurated.filter(m => m.category !== 'general').length
 
   if (isLoading) {
     return (
@@ -132,37 +219,17 @@ export default function ModelLibrary({
     )
   }
 
-  const specs = systemProfile ? mapSystemToSpecs(systemProfile) : []
-
-  // Top recommended model: the single best general-purpose pick
-  const topRecommended = hasScanRun
-    ? models.find(m => (m.fitLevel === 'perfect' || m.fitLevel === 'good') && !m.downloaded && isGeneralPurpose(m.name)) ?? null
-    : null
-
-  const installedModels = models.filter(m => m.downloaded)
-
-  // Catalog section: search + filter — exclude models already shown above
-  // (but don't exclude installed when the "installed" filter is active)
-  const excludeIds = new Set(topRecommended ? [topRecommended.id] : [])
-  if (activeFilter !== 'installed') {
-    for (const m of installedModels) excludeIds.add(m.id)
-  }
-  const query = searchQuery.toLowerCase().trim()
-  const catalogModels = models
-    .filter((m) => !excludeIds.has(m.id))
-    .filter((m) => showAllModels || isGeneralPurpose(m.name))
-    .filter((m) => matchesFilter(m, activeFilter))
-    .filter((m) => !query || m.name.toLowerCase().includes(query) || m.parameterCount.toLowerCase().includes(query) || m.description.toLowerCase().includes(query))
-
-  const specialistCount = models.filter(m => !isGeneralPurpose(m.name)).length
-
   return (
     <div className="flex h-full min-h-0 flex-col overflow-y-auto px-6 pb-6">
       <div className="mx-auto w-full max-w-[960px]">
         {/* Title */}
         <div className="mb-5 shrink-0">
           <h1 className="text-[14px] font-semibold text-stone-50">Models</h1>
-          <p className="mt-0.5 text-[12px] text-white/38">Your models and hardware compatibility</p>
+          <p className="mt-0.5 text-[12px] text-white/38">
+            {systemProfile
+              ? `${availableRam} GB RAM — showing models that fit your system`
+              : 'Browse and download AI models'}
+          </p>
         </div>
 
         {/* System Profile Cards */}
@@ -207,31 +274,22 @@ export default function ModelLibrary({
           </div>
         )}
 
-        {/* Recommended for you — single best pick */}
-        {topRecommended && (
+        {/* Top Pick — featured card */}
+        {topPick && activeFilter !== 'installed' && (
           <div className="mb-6">
-            <div className="mb-3">
-              <h2 className="text-[14px] font-semibold text-stone-50">Best for your system</h2>
-            </div>
-            <ModelCard
-              model={topRecommended}
-              downloadProgress={downloadProgress[topRecommended.id]}
+            <CuratedModelCard
+              model={topPick}
+              isInstalled={false}
+              isDownloading={!!downloadProgress[topPick.ollamaId]}
+              progress={downloadProgress[topPick.ollamaId]}
               onDownload={onDownload}
-              onDelete={onDelete}
               variant="featured"
             />
           </div>
         )}
 
-        {/* Scan banner fallback */}
-        {!hasScanRun && !isScanning && installedModels.length > 0 && (
-          <div className="mb-4 flex items-center gap-2 rounded-2xl border border-white/8 bg-white/4 px-4 py-2.5">
-            <span className="text-[12px] text-white/46">Scan your hardware to get personalized recommendations</span>
-          </div>
-        )}
-
         {/* Installed models */}
-        {installedModels.length > 0 && (
+        {installedModels.length > 0 && activeFilter !== 'recommended' && (
           <div className="mb-6">
             <div className="mb-3">
               <h2 className="text-[14px] font-semibold text-stone-50">Installed</h2>
@@ -246,21 +304,18 @@ export default function ModelLibrary({
                   </div>
                   <div className="flex items-center gap-3">
                     {model.size && <span className="text-[12px] text-white/40">{model.size}</span>}
-                    {onDelete && (
-                      <button
-                        onClick={() => onDelete(model.id)}
-                        className="cursor-pointer text-[11px] text-white/32 transition-colors hover:text-red-400"
-                      >
-                        Remove
-                      </button>
-                    )}
+                    <button
+                      onClick={() => onDelete(model.id)}
+                      className="cursor-pointer text-[11px] text-white/32 transition-colors hover:text-red-400"
+                    >
+                      Remove
+                    </button>
                   </div>
                 </div>
               ))}
             </div>
           </div>
         )}
-
 
         {/* Model catalog */}
         <div className="mb-3 flex items-center justify-between">
@@ -271,7 +326,7 @@ export default function ModelLibrary({
             onClick={() => setShowAllModels(!showAllModels)}
             className="flex cursor-pointer items-center gap-1 text-[12px] text-white/42 transition-colors hover:text-white"
           >
-            {showAllModels ? 'Show general purpose' : `Show all models (${specialistCount} more)`}
+            {showAllModels ? 'Show recommended' : `Show all (${specialistCount} more)`}
             <ChevronDown className={`h-3 w-3 transition-transform ${showAllModels ? 'rotate-180' : ''}`} strokeWidth={1.5} />
           </button>
         </div>
@@ -306,15 +361,22 @@ export default function ModelLibrary({
 
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 xl:grid-cols-3">
           {catalogModels.map((model) => (
-            <ModelCard
-              key={model.id}
+            <CuratedModelCard
+              key={model.ollamaId}
               model={model}
-              downloadProgress={downloadProgress[model.id]}
+              isInstalled={installedIds.has(model.ollamaId)}
+              isDownloading={!!downloadProgress[model.ollamaId]}
+              progress={downloadProgress[model.ollamaId]}
               onDownload={onDownload}
-              onDelete={onDelete}
             />
           ))}
         </div>
+
+        {catalogModels.length === 0 && (
+          <div className="py-8 text-center text-[13px] text-white/28">
+            {query ? 'No models match your search' : 'No models in this category'}
+          </div>
+        )}
       </div>
     </div>
   )
