@@ -214,7 +214,16 @@ export default function ModelLibrary({
     .filter(m => m !== topPick || activeFilter !== 'recommended')
     .filter(m => !query || m.name.toLowerCase().includes(query) || m.description.toLowerCase().includes(query) || m.provider.toLowerCase().includes(query))
 
-  const specialistCount = allCurated.filter(m => m.category !== 'general').length
+  // LLMFit models not in curated list — shown when "Show all" is on
+  const curatedIds = new Set(allCurated.map(m => m.ollamaId))
+  const llmfitExtraModels = showAllModels
+    ? models
+        .filter(m => !m.downloaded && !curatedIds.has(m.id))
+        .filter(m => !query || m.name.toLowerCase().includes(query) || m.description.toLowerCase().includes(query))
+    : []
+
+  const extraCount = models.filter(m => !m.downloaded && !curatedIds.has(m.id)).length
+  const specialistCount = allCurated.filter(m => m.category !== 'general').length + extraCount
 
   if (isLoading) {
     return (
@@ -377,9 +386,33 @@ export default function ModelLibrary({
           ))}
         </div>
 
-        {catalogModels.length === 0 && (
+        {catalogModels.length === 0 && llmfitExtraModels.length === 0 && (
           <div className="py-8 text-center text-[13px] text-white/28">
             {query ? 'No models match your search' : 'No models in this category'}
+          </div>
+        )}
+
+        {/* LLMFit models not in curated list */}
+        {llmfitExtraModels.length > 0 && (
+          <div className="mt-6">
+            <div className="mb-3">
+              <h2 className="text-[14px] font-semibold text-stone-50">More compatible models</h2>
+              <p className="mt-0.5 text-[12px] text-white/28">Found by hardware scan — may require manual Ollama setup</p>
+            </div>
+            <div className="space-y-1">
+              {llmfitExtraModels.map((model) => (
+                <div key={model.id} className="app-card app-card-hover flex items-center justify-between rounded-[18px] px-3.5 py-3">
+                  <div className="flex items-center gap-3">
+                    <span className="font-mono text-[13px] font-medium text-stone-50">{model.name}</span>
+                    {model.parameterCount && <span className="text-[12px] text-white/32">{model.parameterCount}</span>}
+                  </div>
+                  <div className="flex items-center gap-3">
+                    {model.memoryRequiredGb > 0 && <span className="text-[12px] text-white/32">{model.memoryRequiredGb.toFixed(1)} GB</span>}
+                    {model.estimatedTps > 0 && <span className="text-[11px] font-mono text-white/24">{model.estimatedTps} tok/s</span>}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </div>
