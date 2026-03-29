@@ -134,18 +134,16 @@ export default function ModelLibrary({
 
   const specs = systemProfile ? mapSystemToSpecs(systemProfile) : []
 
-  // Recommended models: top 3 general-purpose perfect/good fits that aren't downloaded
-  const recommendedModels = hasScanRun
-    ? models
-        .filter(m => (m.fitLevel === 'perfect' || m.fitLevel === 'good') && !m.downloaded && isGeneralPurpose(m.name))
-        .slice(0, 3)
-    : []
+  // Top recommended model: the single best general-purpose pick
+  const topRecommended = hasScanRun
+    ? models.find(m => (m.fitLevel === 'perfect' || m.fitLevel === 'good') && !m.downloaded && isGeneralPurpose(m.name)) ?? null
+    : null
 
   const installedModels = models.filter(m => m.downloaded)
 
   // Catalog section: search + filter — exclude models already shown above
   // (but don't exclude installed when the "installed" filter is active)
-  const excludeIds = new Set(recommendedModels.map(m => m.id))
+  const excludeIds = new Set(topRecommended ? [topRecommended.id] : [])
   if (activeFilter !== 'installed') {
     for (const m of installedModels) excludeIds.add(m.id)
   }
@@ -209,36 +207,19 @@ export default function ModelLibrary({
           </div>
         )}
 
-        {/* Recommended for you */}
-        {recommendedModels.length > 0 && (
+        {/* Recommended for you — single best pick */}
+        {topRecommended && (
           <div className="mb-6">
             <div className="mb-3">
-              <h2 className="text-[14px] font-semibold text-stone-50">Recommended for your system</h2>
+              <h2 className="text-[14px] font-semibold text-stone-50">Best for your system</h2>
             </div>
-            {/* #1 pick: featured variant */}
-            <div className="mb-3">
-              <ModelCard
-                model={recommendedModels[0]}
-                downloadProgress={downloadProgress[recommendedModels[0].id]}
-                onDownload={onDownload}
-                onDelete={onDelete}
-                variant="featured"
-              />
-            </div>
-            {/* #2 and #3: regular cards in 2-col grid */}
-            {recommendedModels.length > 1 && (
-              <div className="grid grid-cols-2 gap-3">
-                {recommendedModels.slice(1).map((model) => (
-                  <ModelCard
-                    key={model.id}
-                    model={model}
-                    downloadProgress={downloadProgress[model.id]}
-                    onDownload={onDownload}
-                    onDelete={onDelete}
-                  />
-                ))}
-              </div>
-            )}
+            <ModelCard
+              model={topRecommended}
+              downloadProgress={downloadProgress[topRecommended.id]}
+              onDownload={onDownload}
+              onDelete={onDelete}
+              variant="featured"
+            />
           </div>
         )}
 
