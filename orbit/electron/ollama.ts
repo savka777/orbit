@@ -115,18 +115,14 @@ export function pullModel(modelName: string, win: BrowserWindow): Promise<void> 
   })
 }
 
-const TOOL_SYSTEM_PROMPT = `You have access to a web search tool. IMPORTANT RULES:
+const TOOL_SYSTEM_PROMPT = `You have access to a web search tool. Rules:
 
-1. When the user asks about current events, weather, news, prices, sports scores, or anything time-sensitive, you MUST search first. Do NOT guess or make up information.
-2. To search, output ONLY this tag with nothing before it: <search>your query</search>
-3. Do NOT write any text before the search tag. The search tag must be the FIRST thing in your response.
-4. After you receive search results, answer the question using ONLY the information from the results.
-5. If the user asks a general knowledge question that doesn't need current data, answer normally without searching.
-
-Example - user asks "what's the weather in Paris?":
-<search>weather Paris today</search>
-
-Then after receiving results, summarize them concisely.`
+1. For questions about current events, weather, news, prices, or real-time data: search first by outputting <search>query</search> as the FIRST thing in your response, with no text before it.
+2. After receiving search results, answer using ONLY the information from the results. Be concise.
+3. For follow-up questions or clarifications about something you already answered, use the conversation history. Do NOT search again unless the user asks about something new.
+4. For general knowledge questions, answer normally without searching.
+5. Never say "I don't have access to real-time data" — you DO, via the search tool.
+6. Never recommend the user visit websites — just answer their question directly.`
 
 function streamOnce(
   model: string,
