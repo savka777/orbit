@@ -1,8 +1,9 @@
 import { useState } from 'react'
-import { Search, Cpu, MemoryStick, Monitor, MessageSquare, Download, RefreshCw } from 'lucide-react'
+import { Search, Cpu, MemoryStick, Monitor, MessageSquare, Download, RefreshCw, ChevronDown } from 'lucide-react'
 import type { Model, HardwareSpec } from '../types/models'
 import type { SystemProfile } from '../types/llmfit'
 import type { OllamaStatus } from '../types/ollama'
+import { isGeneralPurpose } from '../utils/modelAdapter'
 import ModelCard from '../components/ModelCard'
 import OrbitPulse from '../components/OrbitPulse'
 
@@ -123,6 +124,7 @@ export default function ModelLibrary({
 }: ModelLibraryProps) {
   const [activeFilter, setActiveFilter] = useState<Filter>('all')
   const [searchQuery, setSearchQuery] = useState('')
+  const [showAllModels, setShowAllModels] = useState(false)
 
   if (isLoading) {
     return (
@@ -134,10 +136,10 @@ export default function ModelLibrary({
 
   const specs = systemProfile ? mapSystemToSpecs(systemProfile) : []
 
-  // Recommended models: top 3 perfect/good fits that aren't downloaded
+  // Recommended models: top 3 general-purpose perfect/good fits that aren't downloaded
   const recommendedModels = hasScanRun
     ? models
-        .filter(m => (m.fitLevel === 'perfect' || m.fitLevel === 'good') && !m.downloaded)
+        .filter(m => (m.fitLevel === 'perfect' || m.fitLevel === 'good') && !m.downloaded && isGeneralPurpose(m.name))
         .slice(0, 3)
     : []
 
@@ -146,11 +148,14 @@ export default function ModelLibrary({
   // Check if any model just finished downloading
   const hasJustFinished = Object.entries(downloadProgress).some(([, progress]) => progress === 100)
 
-  // All models section: search + filter
+  // Catalog section: search + filter — only general purpose by default
   const query = searchQuery.toLowerCase().trim()
-  const allModels = models
+  const catalogModels = models
+    .filter((m) => showAllModels || isGeneralPurpose(m.name))
     .filter((m) => matchesFilter(m, activeFilter))
     .filter((m) => !query || m.name.toLowerCase().includes(query) || m.parameterCount.toLowerCase().includes(query) || m.description.toLowerCase().includes(query))
+
+  const specialistCount = models.filter(m => !isGeneralPurpose(m.name)).length
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-y-auto px-6 pb-6">
@@ -287,9 +292,18 @@ export default function ModelLibrary({
           </div>
         )}
 
-        {/* All models */}
-        <div className="mb-3">
-          <h2 className="text-[14px] font-semibold text-stone-50">All models</h2>
+        {/* Model catalog */}
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-[14px] font-semibold text-stone-50">
+            {showAllModels ? 'All models' : 'General purpose'}
+          </h2>
+          <button
+            onClick={() => setShowAllModels(!showAllModels)}
+            className="flex cursor-pointer items-center gap-1 text-[12px] text-white/42 transition-colors hover:text-white"
+          >
+            {showAllModels ? 'Show general purpose' : `Show all models (${specialistCount} more)`}
+            <ChevronDown className={`h-3 w-3 transition-transform ${showAllModels ? 'rotate-180' : ''}`} strokeWidth={1.5} />
+          </button>
         </div>
 
         <div className="mb-4 flex shrink-0 items-center gap-3">
@@ -321,7 +335,7 @@ export default function ModelLibrary({
         </div>
 
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 xl:grid-cols-3">
-          {allModels.map((model) => (
+          {catalogModels.map((model) => (
             <ModelCard
               key={model.id}
               model={model}
