@@ -144,13 +144,14 @@ export default function ModelLibrary({
   const installedModels = models.filter(m => m.downloaded)
 
   // Catalog section: search + filter — exclude models already shown above
-  const shownIds = new Set([
-    ...recommendedModels.map(m => m.id),
-    ...installedModels.map(m => m.id),
-  ])
+  // (but don't exclude installed when the "installed" filter is active)
+  const excludeIds = new Set(recommendedModels.map(m => m.id))
+  if (activeFilter !== 'installed') {
+    for (const m of installedModels) excludeIds.add(m.id)
+  }
   const query = searchQuery.toLowerCase().trim()
   const catalogModels = models
-    .filter((m) => !shownIds.has(m.id))
+    .filter((m) => !excludeIds.has(m.id))
     .filter((m) => showAllModels || isGeneralPurpose(m.name))
     .filter((m) => matchesFilter(m, activeFilter))
     .filter((m) => !query || m.name.toLowerCase().includes(query) || m.parameterCount.toLowerCase().includes(query) || m.description.toLowerCase().includes(query))
