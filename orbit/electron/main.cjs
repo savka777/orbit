@@ -134,7 +134,7 @@ async function webSearch(query, maxResults = 5) {
   const encoded = encodeURIComponent(query)
   const html = await fetchUrl(`https://html.duckduckgo.com/html/?q=${encoded}`)
   const results = []
-  const blocks = html.split('class="result__body"')
+  const blocks = html.split('result results_links')
   for (let i = 1; i < blocks.length && results.length < maxResults; i++) {
     const block = blocks[i]
     const titleMatch = block.match(/class="result__a"[^>]*>([\s\S]*?)<\/a>/)

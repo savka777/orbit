@@ -31,7 +31,7 @@ export async function webSearch(query: string, maxResults = 5): Promise<SearchRe
   const html = await fetchUrl(url)
 
   const results: SearchResult[] = []
-  const blocks = html.split('class="result__body"')
+  const blocks = html.split('result results_links')
 
   for (let i = 1; i < blocks.length && results.length < maxResults; i++) {
     const block = blocks[i]
