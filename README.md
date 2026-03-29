@@ -125,6 +125,12 @@ fork it, branch it, PR it.
 
 ---
 
+## license
+
+Orbit is source-available under [BSL 1.1](LICENSE.md). You can view, fork, and contribute — but you can't use it to build competing products.
+
+---
+
 ## mission
 
 AI is becoming essential infrastructure. using it shouldn't mean sending your thoughts to someone else's server and paying monthly for the privilege.
