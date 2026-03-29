@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from 'react'
+import { useCallback, useEffect, useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAppState } from './hooks/useAppState'
 import type { Screen } from './hooks/useAppState'
@@ -12,6 +12,7 @@ import Chat from './screens/Chat'
 import ModelLibrary from './screens/ModelLibrary'
 import MCPTools from './screens/MCPTools'
 import Settings from './screens/Settings'
+import Toast from './components/Toast'
 
 const pageVariants = {
   initial: { opacity: 0 },
@@ -61,6 +62,22 @@ export default function App() {
   } = useAppState()
 
   const modelsHook = useModels()
+  const [toastVisible, setToastVisible] = useState(false)
+  const [toastMessage, setToastMessage] = useState('')
+  const prevProgressRef = useRef<Record<string, number>>({})
+
+  // Detect download completion → show toast
+  useEffect(() => {
+    const prev = prevProgressRef.current
+    const curr = modelsHook.downloadProgress
+    for (const [name, progress] of Object.entries(curr)) {
+      if (progress === 100 && prev[name] !== 100) {
+        setToastMessage('Model downloaded — ready to chat')
+        setToastVisible(true)
+      }
+    }
+    prevProgressRef.current = { ...curr }
+  }, [modelsHook.downloadProgress])
 
   // Auto-select first downloaded model
   useEffect(() => {
@@ -132,7 +149,6 @@ export default function App() {
             isScanning={modelsHook.isScanning}
             scanError={modelsHook.scanError}
             ollamaStatus={modelsHook.ollamaStatus}
-            onNavigateToWelcome={() => navigateTo('welcome')}
           />
         )
       case 'tools':
@@ -186,6 +202,12 @@ export default function App() {
           </AnimatePresence>
         </main>
       </div>
+      <Toast
+        message={toastMessage}
+        visible={toastVisible}
+        onDismiss={() => setToastVisible(false)}
+        action={{ label: 'Start chatting', onClick: () => { setToastVisible(false); navigateTo('welcome') } }}
+      />
     </>
   )
 }

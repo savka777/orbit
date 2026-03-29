@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Search, Cpu, MemoryStick, Monitor, MessageSquare, Download, RefreshCw, ChevronDown } from 'lucide-react'
+import { Search, Cpu, MemoryStick, Monitor, RefreshCw, ChevronDown } from 'lucide-react'
 import type { Model, HardwareSpec } from '../types/models'
 import type { SystemProfile } from '../types/llmfit'
 import type { OllamaStatus } from '../types/ollama'
@@ -20,7 +20,6 @@ type ModelLibraryProps = {
   isScanning: boolean
   scanError: Error | null
   ollamaStatus: OllamaStatus
-  onNavigateToWelcome?: () => void
 }
 
 const filters: { key: Filter; label: string }[] = [
@@ -120,7 +119,6 @@ export default function ModelLibrary({
   isScanning,
   scanError,
   ollamaStatus,
-  onNavigateToWelcome,
 }: ModelLibraryProps) {
   const [activeFilter, setActiveFilter] = useState<Filter>('all')
   const [searchQuery, setSearchQuery] = useState('')
@@ -145,12 +143,14 @@ export default function ModelLibrary({
 
   const installedModels = models.filter(m => m.downloaded)
 
-  // Check if any model just finished downloading
-  const hasJustFinished = Object.entries(downloadProgress).some(([, progress]) => progress === 100)
-
-  // Catalog section: search + filter — only general purpose by default
+  // Catalog section: search + filter — exclude models already shown above
+  const shownIds = new Set([
+    ...recommendedModels.map(m => m.id),
+    ...installedModels.map(m => m.id),
+  ])
   const query = searchQuery.toLowerCase().trim()
   const catalogModels = models
+    .filter((m) => !shownIds.has(m.id))
     .filter((m) => showAllModels || isGeneralPurpose(m.name))
     .filter((m) => matchesFilter(m, activeFilter))
     .filter((m) => !query || m.name.toLowerCase().includes(query) || m.parameterCount.toLowerCase().includes(query) || m.description.toLowerCase().includes(query))
@@ -279,18 +279,6 @@ export default function ModelLibrary({
           </div>
         )}
 
-        {/* Post-download nudge */}
-        {hasJustFinished && onNavigateToWelcome && (
-          <div className="mb-6 flex items-center justify-center">
-            <button
-              onClick={onNavigateToWelcome}
-              className="flex cursor-pointer items-center gap-1.5 rounded-full bg-white px-4 py-1.5 text-[13px] font-medium text-stone-900 transition-colors hover:bg-stone-100 active:scale-[0.98]"
-            >
-              <MessageSquare className="h-3.5 w-3.5" strokeWidth={1.5} />
-              Start chatting
-            </button>
-          </div>
-        )}
 
         {/* Model catalog */}
         <div className="mb-3 flex items-center justify-between">

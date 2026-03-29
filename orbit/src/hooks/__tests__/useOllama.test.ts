@@ -61,12 +61,14 @@ describe('useOllama', () => {
     expect(result.current.downloadProgress['mistral:latest']).toBe(50)
   })
 
-  it('sets progress to 100 on success status', async () => {
+  it('clears progress on success status', async () => {
     const { result } = renderHook(() => useOllama())
     await waitFor(() => { expect(result.current.isLoading).toBe(false) })
     act(() => { result.current.pullModel('mistral:latest') })
+    act(() => { capturedProgressCb?.({ modelName: 'mistral:latest', progress: { status: 'downloading', total: 100, completed: 50 } }) })
+    expect(result.current.downloadProgress['mistral:latest']).toBe(50)
     act(() => { capturedProgressCb?.({ modelName: 'mistral:latest', progress: { status: 'success' } }) })
-    expect(result.current.downloadProgress['mistral:latest']).toBe(100)
+    expect(result.current.downloadProgress['mistral:latest']).toBeUndefined()
   })
 
   it('sets error on status check failure', async () => {

@@ -52,7 +52,11 @@ export function useOllama() {
     const cleanup = window.orbit.onPullProgress((data) => {
       const typed = data as { modelName: string; progress: { status: string; total?: number; completed?: number } }
       if (typed.progress.status === 'success') {
-        setDownloadProgress((prev) => ({ ...prev, [typed.modelName]: 100 }))
+        setDownloadProgress((prev) => {
+          const next = { ...prev }
+          delete next[typed.modelName]
+          return next
+        })
         refreshModels()
         return
       }
