@@ -9,7 +9,7 @@ type WelcomeProps = {
   ollamaStatus: 'not-installed' | 'installed-not-running' | 'running'
   ollamaLoading: boolean
   hasModels: boolean
-  onNavigateToHardware: () => void
+  onNavigateToModels: () => void
 }
 
 export default function Welcome({
@@ -20,7 +20,7 @@ export default function Welcome({
   ollamaStatus,
   ollamaLoading,
   hasModels,
-  onNavigateToHardware,
+  onNavigateToModels,
 }: WelcomeProps) {
   return (
     <div className="relative flex h-full min-h-0 w-full flex-col overflow-hidden">
@@ -53,7 +53,7 @@ export default function Welcome({
             </div>
           ) : !hasModels ? (
             <button
-              onClick={onNavigateToHardware}
+              onClick={onNavigateToModels}
               className="mt-4 cursor-pointer rounded-full border border-white/8 bg-white/4 px-4 py-1.5 text-[13px] text-white/58 transition-colors hover:bg-white/7 hover:text-white"
             >
               {ollamaStatus === 'not-installed' ? 'Set up your first model' : 'No models yet — browse models'}

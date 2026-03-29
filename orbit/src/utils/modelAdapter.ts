@@ -13,6 +13,18 @@ export function formatBytes(bytes: number): string {
 
 const CODE_FAMILIES = new Set(['codestral', 'starcoder', 'deepseek-coder', 'codegemma', 'codellama', 'deepseek coder'])
 
+// Models that are specialized — not ideal as a consumer's first/default model
+const SPECIALIST_PATTERNS = [
+  'coder', 'code', 'math', 'starcoder', 'codestral', 'deepseek-r1',
+  'wizard-math', 'llemma', 'mathstral', 'sqlcoder', 'magicoder',
+  'stable-code', 'phind', 'embeddings', 'embed',
+]
+
+export function isGeneralPurpose(nameOrFamily: string): boolean {
+  const lower = nameOrFamily.toLowerCase()
+  return !SPECIALIST_PATTERNS.some(p => lower.includes(p))
+}
+
 function deriveCategories(nameOrFamily: string): string[] {
   const lower = nameOrFamily.toLowerCase()
   for (const fam of CODE_FAMILIES) {
