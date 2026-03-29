@@ -113,7 +113,65 @@ function pullModel(modelName, win) {
   })
 }
 
-function streamChat(model, messages, win, conversationId) {
+const TOOL_SYSTEM_PROMPT = `You have access to a web search tool for finding current information.
+
+When you need to look up current events, weather, prices, news, or any real-time information, use:
+<search>your search query</search>
+
+Wait for the search results before continuing your response. You can use multiple searches if needed.
+
+If you don't need to search, just respond normally.`
+
+function fetchUrl(url) {
+  const https = require('https')
+  return new Promise((resolve, reject) => {
+    const req = https.get(url, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36' },
+      timeout: 8000,
+    }, (res) => {
+      if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+        fetchUrl(res.headers.location).then(resolve).catch(reject)
+        return
+      }
+      let data = ''
+      res.on('data', c => data += c)
+      res.on('end', () => resolve(data))
+      res.on('error', reject)
+    })
+    req.on('error', reject)
+    req.on('timeout', () => { req.destroy(); reject(new Error('timeout')) })
+  })
+}
+
+async function webSearch(query, maxResults = 5) {
+  const encoded = encodeURIComponent(query)
+  const html = await fetchUrl(`https://html.duckduckgo.com/html/?q=${encoded}`)
+  const results = []
+  const blocks = html.split('class="result__body"')
+  for (let i = 1; i < blocks.length && results.length < maxResults; i++) {
+    const block = blocks[i]
+    const titleMatch = block.match(/class="result__a"[^>]*>([\s\S]*?)<\/a>/)
+    const snippetMatch = block.match(/class="result__snippet"[^>]*>([\s\S]*?)<\//)
+    if (titleMatch) {
+      const title = titleMatch[1].replace(/<[^>]+>/g, '').replace(/&#x27;/g, "'").replace(/&amp;/g, '&').trim()
+      const snippet = snippetMatch ? snippetMatch[1].replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').replace(/&#x27;/g, "'").replace(/&amp;/g, '&').trim() : ''
+      results.push({ title, snippet })
+    }
+  }
+  return results
+}
+
+function formatSearchResults(results) {
+  if (results.length === 0) return 'No search results found.'
+  return results.map((r, i) => `[${i + 1}] ${r.title}\n${r.snippet}`).join('\n\n')
+}
+
+function extractSearchQueries(text) {
+  const matches = [...text.matchAll(/<search>([\s\S]*?)<\/search>/g)]
+  return matches.map(m => m[1].trim())
+}
+
+function streamOnce(model, messages, win, conversationId) {
   return new Promise((resolve, reject) => {
     const url = new URL('/api/chat', OLLAMA_HOST)
     const body = JSON.stringify({ model, messages, stream: true })
@@ -121,26 +179,62 @@ function streamChat(model, messages, win, conversationId) {
       hostname: url.hostname, port: url.port, path: url.pathname, method: 'POST',
       headers: { 'Content-Type': 'application/json' },
     }
+    let fullContent = ''
     const req = http.request(options, (res) => {
       res.on('data', (chunk) => {
         const lines = chunk.toString().split('\n').filter(Boolean)
         for (const line of lines) {
           try {
             const parsed = JSON.parse(line)
+            fullContent += parsed.message?.content || ''
             win.webContents.send('ollama:chat-chunk', { conversationId, chunk: parsed })
           } catch { /* skip */ }
         }
       })
-      res.on('end', () => {
-        win.webContents.send('ollama:chat-done', { conversationId })
-        resolve()
-      })
+      res.on('end', () => resolve(fullContent))
       res.on('error', reject)
     })
     req.on('error', reject)
     req.write(body)
     req.end()
   })
+}
+
+async function streamChat(model, messages, win, conversationId) {
+  const messagesWithSystem = [
+    { role: 'system', content: TOOL_SYSTEM_PROMPT },
+    ...messages,
+  ]
+
+  let currentMessages = messagesWithSystem
+  for (let round = 0; round < 3; round++) {
+    const response = await streamOnce(model, currentMessages, win, conversationId)
+    const queries = extractSearchQueries(response)
+    if (queries.length === 0) break
+
+    const searchResults = []
+    for (const query of queries) {
+      try {
+        const results = await webSearch(query)
+        searchResults.push(`Search results for "${query}":\n${formatSearchResults(results)}`)
+      } catch {
+        searchResults.push(`Search for "${query}" failed. Please try answering without search results.`)
+      }
+    }
+
+    win.webContents.send('ollama:chat-chunk', {
+      conversationId,
+      chunk: { message: { content: '\n\n*Searching the web...*\n\n' }, done: false },
+    })
+
+    currentMessages = [
+      ...currentMessages,
+      { role: 'assistant', content: response },
+      { role: 'user', content: searchResults.join('\n\n') + '\n\nNow answer the original question using the search results above.' },
+    ]
+  }
+
+  win.webContents.send('ollama:chat-done', { conversationId })
 }
 
 // ─── LLMFit (CLI-based) ────────────────────────────────────

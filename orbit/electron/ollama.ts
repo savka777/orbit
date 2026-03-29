@@ -1,6 +1,7 @@
 import { exec } from 'child_process'
 import http from 'http'
 import { BrowserWindow } from 'electron'
+import { webSearch, formatSearchResults } from './search'
 
 const OLLAMA_HOST = 'http://127.0.0.1:11434'
 
@@ -114,12 +115,21 @@ export function pullModel(modelName: string, win: BrowserWindow): Promise<void> 
   })
 }
 
-export function streamChat(
+const TOOL_SYSTEM_PROMPT = `You have access to a web search tool for finding current information.
+
+When you need to look up current events, weather, prices, news, or any real-time information, use:
+<search>your search query</search>
+
+Wait for the search results before continuing your response. You can use multiple searches if needed.
+
+If you don't need to search, just respond normally.`
+
+function streamOnce(
   model: string,
   messages: Array<{ role: string; content: string }>,
   win: BrowserWindow,
   conversationId: string
-): Promise<void> {
+): Promise<string> {
   return new Promise((resolve, reject) => {
     const url = new URL('/api/chat', OLLAMA_HOST)
     const body = JSON.stringify({ model, messages, stream: true })
@@ -131,24 +141,76 @@ export function streamChat(
       headers: { 'Content-Type': 'application/json' },
     }
 
+    let fullContent = ''
     const req = http.request(options, (res) => {
       res.on('data', (chunk) => {
         const lines = chunk.toString().split('\n').filter(Boolean)
         for (const line of lines) {
           try {
             const parsed = JSON.parse(line)
+            fullContent += parsed.message?.content || ''
             win.webContents.send('ollama:chat-chunk', { conversationId, chunk: parsed })
           } catch { /* skip */ }
         }
       })
-      res.on('end', () => {
-        win.webContents.send('ollama:chat-done', { conversationId })
-        resolve()
-      })
+      res.on('end', () => resolve(fullContent))
       res.on('error', reject)
     })
     req.on('error', reject)
     req.write(body)
     req.end()
   })
+}
+
+function extractSearchQueries(text: string): string[] {
+  const matches = text.matchAll(/<search>([\s\S]*?)<\/search>/g)
+  return [...matches].map(m => m[1].trim())
+}
+
+export async function streamChat(
+  model: string,
+  messages: Array<{ role: string; content: string }>,
+  win: BrowserWindow,
+  conversationId: string
+): Promise<void> {
+  // Inject tool system prompt
+  const messagesWithSystem: Array<{ role: string; content: string }> = [
+    { role: 'system', content: TOOL_SYSTEM_PROMPT },
+    ...messages,
+  ]
+
+  // Tool-calling loop (max 3 rounds to prevent infinite loops)
+  let currentMessages = messagesWithSystem
+  for (let round = 0; round < 3; round++) {
+    const response = await streamOnce(model, currentMessages, win, conversationId)
+
+    const queries = extractSearchQueries(response)
+    if (queries.length === 0) break // No tool calls — done
+
+    // Execute searches
+    const searchResults: string[] = []
+    for (const query of queries) {
+      try {
+        const results = await webSearch(query)
+        searchResults.push(`Search results for "${query}":\n${formatSearchResults(results)}`)
+      } catch {
+        searchResults.push(`Search for "${query}" failed. Please try answering without search results.`)
+      }
+    }
+
+    // Send a "searching..." indicator to the renderer
+    win.webContents.send('ollama:chat-chunk', {
+      conversationId,
+      chunk: { message: { content: '\n\n*Searching the web...*\n\n' }, done: false },
+    })
+
+    // Add the assistant response + search results to context, ask model to continue
+    currentMessages = [
+      ...currentMessages,
+      { role: 'assistant', content: response },
+      { role: 'user', content: searchResults.join('\n\n') + '\n\nNow answer the original question using the search results above.' },
+    ]
+  }
+
+  win.webContents.send('ollama:chat-done', { conversationId })
 }
