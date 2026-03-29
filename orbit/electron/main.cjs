@@ -122,25 +122,12 @@ Wait for the search results before continuing your response. You can use multipl
 
 If you don't need to search, just respond normally.`
 
-function fetchUrl(url) {
-  const https = require('https')
-  return new Promise((resolve, reject) => {
-    const req = https.get(url, {
-      headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36' },
-      timeout: 8000,
-    }, (res) => {
-      if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-        fetchUrl(res.headers.location).then(resolve).catch(reject)
-        return
-      }
-      let data = ''
-      res.on('data', c => data += c)
-      res.on('end', () => resolve(data))
-      res.on('error', reject)
-    })
-    req.on('error', reject)
-    req.on('timeout', () => { req.destroy(); reject(new Error('timeout')) })
+async function fetchUrl(url) {
+  const res = await fetch(url, {
+    headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36' },
+    signal: AbortSignal.timeout(10000),
   })
+  return await res.text()
 }
 
 async function webSearch(query, maxResults = 5) {

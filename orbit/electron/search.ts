@@ -1,29 +1,15 @@
-import https from 'https'
-
 export type SearchResult = {
   title: string
   url: string
   snippet: string
 }
 
-function fetchUrl(url: string): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const req = https.get(url, {
-      headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36' },
-      timeout: 8000,
-    }, (res) => {
-      if (res.statusCode && res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-        fetchUrl(res.headers.location).then(resolve).catch(reject)
-        return
-      }
-      let data = ''
-      res.on('data', (chunk) => (data += chunk))
-      res.on('end', () => resolve(data))
-      res.on('error', reject)
-    })
-    req.on('error', reject)
-    req.on('timeout', () => { req.destroy(); reject(new Error('Search request timed out')) })
+async function fetchUrl(url: string): Promise<string> {
+  const res = await fetch(url, {
+    headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36' },
+    signal: AbortSignal.timeout(10000),
   })
+  return await res.text()
 }
 
 function decodeHtmlEntities(text: string): string {
