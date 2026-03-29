@@ -134,6 +134,50 @@ async function fetchUrl(url) {
   return await res.text()
 }
 
+const WEATHER_CODES = {
+  0: 'Clear sky', 1: 'Mainly clear', 2: 'Partly cloudy', 3: 'Overcast',
+  45: 'Foggy', 48: 'Rime fog', 51: 'Light drizzle', 53: 'Moderate drizzle',
+  55: 'Dense drizzle', 61: 'Slight rain', 63: 'Moderate rain', 65: 'Heavy rain',
+  71: 'Slight snow', 73: 'Moderate snow', 75: 'Heavy snow', 80: 'Slight rain showers',
+  81: 'Moderate rain showers', 82: 'Violent rain showers', 95: 'Thunderstorm',
+}
+
+async function weatherSearch(query) {
+  // Extract city name from query
+  const cityMatch = query.match(/(?:weather|temperature|forecast)(?:\s+(?:in|for|at))?\s+(.+?)(?:\s+(?:today|now|right now|currently|current))?$/i)
+  const city = cityMatch ? cityMatch[1].trim() : query.replace(/weather|temperature|forecast|today|now|current/gi, '').trim()
+  if (!city) return null
+
+  try {
+    // Geocode the city
+    const geoRes = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1`)
+    const geoData = await geoRes.json()
+    if (!geoData.results || geoData.results.length === 0) return null
+
+    const { latitude, longitude, name, country } = geoData.results[0]
+
+    // Get current weather
+    const wxRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,apparent_temperature,wind_speed_10m,weather_code,relative_humidity_2m&daily=temperature_2m_max,temperature_2m_min&temperature_unit=celsius&forecast_days=1`)
+    const wxData = await wxRes.json()
+    const c = wxData.current
+    const d = wxData.daily
+
+    const condition = WEATHER_CODES[c.weather_code] || 'Unknown'
+    return `Current weather in ${name}, ${country}:
+- Temperature: ${c.temperature_2m}°C (feels like ${c.apparent_temperature}°C)
+- Conditions: ${condition}
+- Humidity: ${c.relative_humidity_2m}%
+- Wind: ${c.wind_speed_10m} km/h
+- Today's high: ${d.temperature_2m_max[0]}°C, low: ${d.temperature_2m_min[0]}°C`
+  } catch {
+    return null
+  }
+}
+
+function isWeatherQuery(query) {
+  return /\b(weather|temperature|forecast|degrees|celsius|fahrenheit)\b/i.test(query)
+}
+
 async function webSearch(query, maxResults = 5) {
   const encoded = encodeURIComponent(query)
   const html = await fetchUrl(`https://html.duckduckgo.com/html/?q=${encoded}`)
@@ -253,6 +297,15 @@ async function streamChat(model, messages, win, conversationId) {
     const searchResults = []
     for (const query of queries) {
       try {
+        // Try weather API first for weather queries
+        if (isWeatherQuery(query)) {
+          const weatherResult = await weatherSearch(query)
+          if (weatherResult) {
+            searchResults.push(weatherResult)
+            continue
+          }
+        }
+        // Fall back to DDG web search
         const results = await webSearch(query)
         searchResults.push(`Search results for "${query}":\n${formatSearchResults(results)}`)
       } catch {
