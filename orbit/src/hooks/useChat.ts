@@ -25,8 +25,14 @@ export function useChat({ model, conversationId, onStreamComplete }: UseChatOpti
     const gen = ++generationRef.current
     const cleanupChunk = window.orbit.onChatChunk((data) => {
       if (gen !== generationRef.current) return
-      const typed = data as { conversationId: string; chunk: { message: { content: string }; done: boolean } }
+      const typed = data as { conversationId: string; chunk: { message: { content: string }; done: boolean; reset?: boolean } }
       if (typed.conversationId !== conversationId) return
+      // Reset signal: clear accumulated content (used between search rounds)
+      if (typed.chunk.reset) {
+        streamedRef.current = ''
+        setStreamedContent('')
+        return
+      }
       streamedRef.current += typed.chunk.message.content
       setStreamedContent(streamedRef.current)
     })

@@ -221,6 +221,7 @@ function streamOnce(model, messages, win, conversationId) {
     }
     let fullContent = ''
     let insideAngleBracket = false
+    let insideSearchBlock = false
     let bracketBuffer = ''
 
     const req = http.request(options, (res) => {
@@ -232,49 +233,54 @@ function streamOnce(model, messages, win, conversationId) {
             const token = parsed.message?.content || ''
             fullContent += token
 
-            // Hide anything inside < > from the user (search tags, malformed tags)
+            // Filter search tags and buffer tokens (not char-by-char)
+            let safeBuffer = ''
             for (const char of token) {
               if (char === '<' && !insideAngleBracket) {
+                if (safeBuffer) {
+                  win.webContents.send('ollama:chat-chunk', {
+                    conversationId,
+                    chunk: { message: { content: safeBuffer }, done: false },
+                  })
+                  safeBuffer = ''
+                }
                 insideAngleBracket = true
                 bracketBuffer = '<'
               } else if (insideAngleBracket) {
                 bracketBuffer += char
                 if (char === '>') {
-                  // Tag closed — check if it looks like a search/tool tag or HTML
-                  const isSearchTag = /^<\/?search/i.test(bracketBuffer)
+                  const isSearchOpen = /^<search/i.test(bracketBuffer)
+                  const isSearchClose = /^<\/search/i.test(bracketBuffer)
                   const isMalformedSearch = bracketBuffer.length > 10 && !bracketBuffer.startsWith('</')
-                  if (isSearchTag || isMalformedSearch) {
-                    // Hide it — don't send to renderer
-                  } else {
-                    // Regular content with angle brackets (e.g. code) — show it
-                    win.webContents.send('ollama:chat-chunk', {
-                      conversationId,
-                      chunk: { message: { content: bracketBuffer }, done: false },
-                    })
+                  if (isSearchOpen || isMalformedSearch) {
+                    insideSearchBlock = true
+                  } else if (isSearchClose) {
+                    insideSearchBlock = false
+                  } else if (!insideSearchBlock) {
+                    safeBuffer += bracketBuffer
                   }
                   insideAngleBracket = false
                   bracketBuffer = ''
                 } else if (bracketBuffer.length > 100) {
-                  // Too long to be a tag — flush as content
-                  win.webContents.send('ollama:chat-chunk', {
-                    conversationId,
-                    chunk: { message: { content: bracketBuffer }, done: false },
-                  })
+                  if (!insideSearchBlock) safeBuffer += bracketBuffer
                   insideAngleBracket = false
                   bracketBuffer = ''
                 }
-              } else {
-                win.webContents.send('ollama:chat-chunk', {
-                  conversationId,
-                  chunk: { message: { content: char }, done: false },
-                })
+              } else if (!insideSearchBlock) {
+                safeBuffer += char
               }
+            }
+            if (safeBuffer) {
+              win.webContents.send('ollama:chat-chunk', {
+                conversationId,
+                chunk: { message: { content: safeBuffer }, done: false },
+              })
             }
           } catch { /* skip */ }
         }
       })
       res.on('end', () => {
-        if (bracketBuffer.length > 0) {
+        if (bracketBuffer.length > 0 && !insideSearchBlock) {
           win.webContents.send('ollama:chat-chunk', {
             conversationId,
             chunk: { message: { content: bracketBuffer }, done: false },
@@ -327,10 +333,16 @@ async function streamChat(model, messages, win, conversationId) {
       }
     }
 
+    // Reset renderer content before streaming the answer
+    win.webContents.send('ollama:chat-chunk', {
+      conversationId,
+      chunk: { message: { content: '' }, done: false, reset: true },
+    })
+
     currentMessages = [
       ...currentMessages,
       { role: 'assistant', content: response },
-      { role: 'user', content: searchResults.join('\n\n') + '\n\nNow answer the original question using the search results above.' },
+      { role: 'user', content: searchResults.join('\n\n') + '\n\nNow answer the original question using the search results above. Be concise and direct.' },
     ]
   }
 
