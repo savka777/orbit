@@ -1,8 +1,4 @@
-<p align="center">
-  <img src="docs/orbit-banner.png" alt="Orbit" width="100%" />
-</p>
-
-<h1 align="center">Orbit</h1>
+<h1 align="center">⚡ Orbit</h1>
 
 <p align="center">
   <strong>your ai, your rules.</strong>
