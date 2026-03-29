@@ -5,6 +5,7 @@ import type { SystemProfile } from '../types/llmfit'
 import type { OllamaStatus } from '../types/ollama'
 import { getRecommendedModels, getAllFittingModels, type CuratedModel } from '../data/models'
 import ModelCard from '../components/ModelCard'
+import LiquidGradient from '../components/LiquidGradient'
 import OrbitPulse from '../components/OrbitPulse'
 
 type Filter = 'recommended' | 'installed' | 'all'
@@ -93,41 +94,45 @@ function CuratedModelCard({
 }) {
   if (variant === 'featured') {
     return (
-      <div className="app-card relative overflow-hidden rounded-[22px] p-5">
-        <div className="relative z-10">
-          <div className="mb-2">
-            <span className="text-[11px] font-medium text-white/55">Best for your system</span>
-          </div>
-          <h3 className="text-[18px] font-semibold text-stone-50">{model.name}</h3>
-          <p className="mt-1 text-[13px] text-white/55">{model.description}</p>
-          <div className="mt-3 flex items-center gap-3">
-            <span className="text-[12px] text-white/32">{model.parameterCount}</span>
-            <span className="text-[12px] text-white/32">{model.ramRequired} GB</span>
-            <span className="text-[12px] text-white/32">{model.provider}</span>
-            {model.toolCalling && (
-              <span className="rounded-full bg-[#5d79ff]/15 px-2 py-0.5 text-[10px] font-medium text-[#5d79ff]">Tools</span>
-            )}
-          </div>
-          <div className="mt-4">
-            {isInstalled ? (
-              <span className="rounded-full bg-[#5d79ff]/15 px-3 py-1 text-[12px] font-medium text-[#5d79ff]">Installed</span>
-            ) : isDownloading ? (
-              <div className="flex items-center gap-2">
-                <div className="h-1.5 w-32 overflow-hidden rounded-full bg-white/10">
-                  <div className="h-full rounded-full bg-[#5d79ff] transition-all" style={{ width: `${progress || 0}%` }} />
-                </div>
-                <span className="text-[11px] text-white/38">{progress || 0}%</span>
+      <div className="relative overflow-hidden rounded-[28px]" style={{ minHeight: 160 }}>
+        <LiquidGradient />
+        <div className="relative z-10 flex h-full min-h-[160px] flex-col justify-end p-5">
+          <div className="flex items-end justify-between">
+            <div>
+              <div className="mb-1 flex items-baseline gap-2">
+                <h3 className="text-[16px] font-semibold text-white">{model.name}</h3>
+                <span className="font-mono text-[12px] text-white/58">
+                  {model.parameterCount} / {model.ramRequired} GB
+                </span>
+                {model.toolCalling && (
+                  <span className="rounded-full bg-white/15 px-2 py-0.5 text-[10px] font-medium text-white/80">Tools</span>
+                )}
               </div>
-            ) : (
-              <button
-                onClick={() => onDownload(model.ollamaId)}
-                className="flex cursor-pointer items-center gap-1.5 rounded-full bg-white px-4 py-1.5 text-[12px] font-medium text-stone-900 transition-colors hover:bg-stone-100 active:scale-[0.97]"
-              >
-                <Download className="h-3 w-3" strokeWidth={1.5} />
-                Download
-              </button>
-            )}
+              <p className="max-w-[75%] text-[12px] leading-relaxed text-white/68">
+                {model.description}
+              </p>
+            </div>
+            <div className="shrink-0 ml-4">
+              {isInstalled ? (
+                <span className="rounded-full bg-white px-3 py-1 text-[11px] font-medium text-stone-900">Installed</span>
+              ) : isDownloading ? (
+                <span className="text-[11px] font-mono text-white/52">{progress || 0}%</span>
+              ) : (
+                <button
+                  onClick={() => onDownload(model.ollamaId)}
+                  className="flex cursor-pointer items-center gap-1.5 rounded-full bg-white px-4 py-1.5 text-[12px] font-medium text-stone-900 transition-colors hover:bg-stone-100 active:scale-[0.97]"
+                >
+                  <Download className="h-3 w-3" strokeWidth={1.5} />
+                  Download
+                </button>
+              )}
+            </div>
           </div>
+          {isDownloading && (
+            <div className="mt-3 h-1 w-full overflow-hidden rounded-full bg-white/10">
+              <div className="h-full rounded-full bg-white/70 transition-all" style={{ width: `${progress || 0}%` }} />
+            </div>
+          )}
         </div>
       </div>
     )
