@@ -37,7 +37,7 @@ export async function webSearch(query: string, maxResults = 5): Promise<SearchRe
     const block = blocks[i]
     const titleMatch = block.match(/class="result__a"[^>]*>([\s\S]*?)<\/a>/)
     const urlMatch = block.match(/class="result__url"[^>]*>([\s\S]*?)<\/a>/)
-    const snippetMatch = block.match(/class="result__snippet"[^>]*>([\s\S]*?)<\//)
+    const snippetMatch = block.match(/class="result__snippet"[^>]*>([\s\S]*?)<\/a/)
 
     if (titleMatch) {
       const title = decodeHtmlEntities(titleMatch[1].replace(/<[^>]+>/g, '').trim())

@@ -113,14 +113,18 @@ function pullModel(modelName, win) {
   })
 }
 
-const TOOL_SYSTEM_PROMPT = `You have access to a web search tool for finding current information.
+const TOOL_SYSTEM_PROMPT = `You have access to a web search tool. IMPORTANT RULES:
 
-When you need to look up current events, weather, prices, news, or any real-time information, use:
-<search>your search query</search>
+1. When the user asks about current events, weather, news, prices, sports scores, or anything time-sensitive, you MUST search first. Do NOT guess or make up information.
+2. To search, output ONLY this tag with nothing before it: <search>your query</search>
+3. Do NOT write any text before the search tag. The search tag must be the FIRST thing in your response.
+4. After you receive search results, answer the question using ONLY the information from the results.
+5. If the user asks a general knowledge question that doesn't need current data, answer normally without searching.
 
-Wait for the search results before continuing your response. You can use multiple searches if needed.
+Example - user asks "what's the weather in Paris?":
+<search>weather Paris today</search>
 
-If you don't need to search, just respond normally.`
+Then after receiving results, summarize them concisely.`
 
 async function fetchUrl(url) {
   const res = await fetch(url, {
@@ -138,10 +142,10 @@ async function webSearch(query, maxResults = 5) {
   for (let i = 1; i < blocks.length && results.length < maxResults; i++) {
     const block = blocks[i]
     const titleMatch = block.match(/class="result__a"[^>]*>([\s\S]*?)<\/a>/)
-    const snippetMatch = block.match(/class="result__snippet"[^>]*>([\s\S]*?)<\//)
+    const snippetMatch = block.match(/class="result__snippet"[^>]*>([\s\S]*?)<\/a/)
     if (titleMatch) {
-      const title = titleMatch[1].replace(/<[^>]+>/g, '').replace(/&#x27;/g, "'").replace(/&amp;/g, '&').trim()
-      const snippet = snippetMatch ? snippetMatch[1].replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').replace(/&#x27;/g, "'").replace(/&amp;/g, '&').trim() : ''
+      const title = titleMatch[1].replace(/<[^>]+>/g, '').replace(/&#x27;/g, "'").replace(/&amp;/g, '&').replace(/&quot;/g, '"').trim()
+      const snippet = snippetMatch ? snippetMatch[1].replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').replace(/&#x27;/g, "'").replace(/&amp;/g, '&').replace(/&quot;/g, '"').trim() : ''
       results.push({ title, snippet })
     }
   }
