@@ -10,9 +10,8 @@ type KeyboardNavOptions = {
 const screenKeys: Record<string, Screen> = {
   '1': 'welcome',
   '2': 'chat',
-  '3': 'hardware',
-  '4': 'models',
-  '5': 'tools',
+  '3': 'models',
+  '4': 'tools',
 }
 
 export function useKeyboardNav({ onNavigate, onNewChat, onToggleSidebar }: KeyboardNavOptions) {

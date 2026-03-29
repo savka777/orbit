@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect } from 'react'
 import type { Conversation, Message, MCPTool } from '../types/models'
 import { mcpTools as initialTools } from '../data/mock'
 
-export type Screen = 'welcome' | 'chat' | 'hardware' | 'models' | 'tools' | 'settings'
+export type Screen = 'welcome' | 'chat' | 'models' | 'tools' | 'settings'
 
 const STORAGE_KEY = 'orbit:conversations'
 

@@ -1,6 +1,5 @@
 import {
   SquarePen,
-  Cpu,
   Layers,
   Plug,
   Settings,
@@ -10,18 +9,17 @@ import {
 } from 'lucide-react'
 import { useState } from 'react'
 type SidebarProps = {
-  currentScreen: 'welcome' | 'chat' | 'hardware' | 'models' | 'tools' | 'settings'
+  currentScreen: 'welcome' | 'chat' | 'models' | 'tools' | 'settings'
   conversations: Array<{ id: string; title: string; timestamp: string; model: string }>
   activeConversationId: string | null
   collapsed: boolean
-  onNavigate: (screen: 'welcome' | 'chat' | 'hardware' | 'models' | 'tools' | 'settings') => void
+  onNavigate: (screen: 'welcome' | 'chat' | 'models' | 'tools' | 'settings') => void
   onOpenConversation: (id: string) => void
   onNewChat: () => void
   onToggleCollapse: () => void
 }
 
 const navItems = [
-  { screen: 'hardware' as const, icon: Cpu, label: 'Hardware' },
   { screen: 'models' as const, icon: Layers, label: 'Models' },
   { screen: 'tools' as const, icon: Plug, label: 'Tools' },
   { screen: 'settings' as const, icon: Settings, label: 'Settings' },

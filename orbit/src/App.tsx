@@ -9,7 +9,6 @@ import Sidebar from './components/Sidebar'
 import GrainFilter from './components/GrainFilter'
 import Welcome from './screens/Welcome'
 import Chat from './screens/Chat'
-import HardwareAudit from './screens/HardwareAudit'
 import ModelLibrary from './screens/ModelLibrary'
 import MCPTools from './screens/MCPTools'
 import Settings from './screens/Settings'
@@ -76,7 +75,7 @@ export default function App() {
 
   const navigateToWithScan = useCallback((screen: Screen) => {
     navigateTo(screen)
-    if (screen === 'hardware') modelsHook.triggerScan()
+    if (screen === 'models') modelsHook.triggerScan()
   }, [navigateTo, modelsHook.triggerScan])
 
   const handleSendMessage = useCallback((content: string) => {
@@ -105,7 +104,7 @@ export default function App() {
             ollamaStatus={modelsHook.ollamaStatus}
             ollamaLoading={modelsHook.ollamaLoading}
             hasModels={downloadedModels.length > 0}
-            onNavigateToHardware={() => navigateToWithScan('hardware')}
+            onNavigateToModels={() => navigateToWithScan('models')}
           />
         )
       case 'chat':
@@ -120,21 +119,6 @@ export default function App() {
             onSelectModel={setSelectedModelId}
           />
         )
-      case 'hardware':
-        return (
-          <HardwareAudit
-            systemProfile={modelsHook.systemProfile}
-            models={modelsHook.models}
-            isScanning={modelsHook.isScanning}
-            scanError={modelsHook.scanError}
-            ollamaStatus={modelsHook.ollamaStatus}
-            downloadProgress={modelsHook.downloadProgress}
-            onScan={modelsHook.triggerScan}
-            onDownload={modelsHook.pullModel}
-            onNavigateToModels={() => navigateTo('models')}
-            onNavigateToWelcome={() => navigateTo('welcome')}
-          />
-        )
       case 'models':
         return (
           <ModelLibrary
@@ -144,7 +128,11 @@ export default function App() {
             onDelete={modelsHook.deleteModel}
             isLoading={modelsHook.ollamaLoading}
             hasScanRun={modelsHook.hasScanRun}
-            onNavigateToHardware={() => navigateToWithScan('hardware')}
+            systemProfile={modelsHook.systemProfile}
+            isScanning={modelsHook.isScanning}
+            scanError={modelsHook.scanError}
+            ollamaStatus={modelsHook.ollamaStatus}
+            onNavigateToWelcome={() => navigateTo('welcome')}
           />
         )
       case 'tools':
