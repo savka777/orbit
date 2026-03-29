@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Search, Cpu, MemoryStick, Monitor, MessageSquare, Download, RefreshCw, ChevronDown } from 'lucide-react'
+import { Search, Cpu, MemoryStick, Monitor, RefreshCw, ChevronDown } from 'lucide-react'
 import type { Model, HardwareSpec } from '../types/models'
 import type { SystemProfile } from '../types/llmfit'
 import type { OllamaStatus } from '../types/ollama'
@@ -20,7 +20,6 @@ type ModelLibraryProps = {
   isScanning: boolean
   scanError: Error | null
   ollamaStatus: OllamaStatus
-  onNavigateToWelcome?: () => void
 }
 
 const filters: { key: Filter; label: string }[] = [
@@ -120,7 +119,6 @@ export default function ModelLibrary({
   isScanning,
   scanError,
   ollamaStatus,
-  onNavigateToWelcome,
 }: ModelLibraryProps) {
   const [activeFilter, setActiveFilter] = useState<Filter>('all')
   const [searchQuery, setSearchQuery] = useState('')
@@ -136,21 +134,22 @@ export default function ModelLibrary({
 
   const specs = systemProfile ? mapSystemToSpecs(systemProfile) : []
 
-  // Recommended models: top 3 general-purpose perfect/good fits that aren't downloaded
-  const recommendedModels = hasScanRun
-    ? models
-        .filter(m => (m.fitLevel === 'perfect' || m.fitLevel === 'good') && !m.downloaded && isGeneralPurpose(m.name))
-        .slice(0, 3)
-    : []
+  // Top recommended model: the single best general-purpose pick
+  const topRecommended = hasScanRun
+    ? models.find(m => (m.fitLevel === 'perfect' || m.fitLevel === 'good') && !m.downloaded && isGeneralPurpose(m.name)) ?? null
+    : null
 
   const installedModels = models.filter(m => m.downloaded)
 
-  // Check if any model just finished downloading
-  const hasJustFinished = Object.entries(downloadProgress).some(([, progress]) => progress === 100)
-
-  // Catalog section: search + filter — only general purpose by default
+  // Catalog section: search + filter — exclude models already shown above
+  // (but don't exclude installed when the "installed" filter is active)
+  const excludeIds = new Set(topRecommended ? [topRecommended.id] : [])
+  if (activeFilter !== 'installed') {
+    for (const m of installedModels) excludeIds.add(m.id)
+  }
   const query = searchQuery.toLowerCase().trim()
   const catalogModels = models
+    .filter((m) => !excludeIds.has(m.id))
     .filter((m) => showAllModels || isGeneralPurpose(m.name))
     .filter((m) => matchesFilter(m, activeFilter))
     .filter((m) => !query || m.name.toLowerCase().includes(query) || m.parameterCount.toLowerCase().includes(query) || m.description.toLowerCase().includes(query))
@@ -208,36 +207,19 @@ export default function ModelLibrary({
           </div>
         )}
 
-        {/* Recommended for you */}
-        {recommendedModels.length > 0 && (
+        {/* Recommended for you — single best pick */}
+        {topRecommended && (
           <div className="mb-6">
             <div className="mb-3">
-              <h2 className="text-[14px] font-semibold text-stone-50">Recommended for your system</h2>
+              <h2 className="text-[14px] font-semibold text-stone-50">Best for your system</h2>
             </div>
-            {/* #1 pick: featured variant */}
-            <div className="mb-3">
-              <ModelCard
-                model={recommendedModels[0]}
-                downloadProgress={downloadProgress[recommendedModels[0].id]}
-                onDownload={onDownload}
-                onDelete={onDelete}
-                variant="featured"
-              />
-            </div>
-            {/* #2 and #3: regular cards in 2-col grid */}
-            {recommendedModels.length > 1 && (
-              <div className="grid grid-cols-2 gap-3">
-                {recommendedModels.slice(1).map((model) => (
-                  <ModelCard
-                    key={model.id}
-                    model={model}
-                    downloadProgress={downloadProgress[model.id]}
-                    onDownload={onDownload}
-                    onDelete={onDelete}
-                  />
-                ))}
-              </div>
-            )}
+            <ModelCard
+              model={topRecommended}
+              downloadProgress={downloadProgress[topRecommended.id]}
+              onDownload={onDownload}
+              onDelete={onDelete}
+              variant="featured"
+            />
           </div>
         )}
 
@@ -279,18 +261,6 @@ export default function ModelLibrary({
           </div>
         )}
 
-        {/* Post-download nudge */}
-        {hasJustFinished && onNavigateToWelcome && (
-          <div className="mb-6 flex items-center justify-center">
-            <button
-              onClick={onNavigateToWelcome}
-              className="flex cursor-pointer items-center gap-1.5 rounded-full bg-white px-4 py-1.5 text-[13px] font-medium text-stone-900 transition-colors hover:bg-stone-100 active:scale-[0.98]"
-            >
-              <MessageSquare className="h-3.5 w-3.5" strokeWidth={1.5} />
-              Start chatting
-            </button>
-          </div>
-        )}
 
         {/* Model catalog */}
         <div className="mb-3 flex items-center justify-between">

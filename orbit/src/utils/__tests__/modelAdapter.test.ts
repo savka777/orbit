@@ -31,16 +31,20 @@ describe('normalizeModelKey', () => {
 })
 
 describe('buildPullName', () => {
-  it('returns simple lowercase name with version collapsed', () => {
-    expect(buildPullName('Llama 3.3', '70B', 'Q4_K_M')).toBe('llama3.3')
+  it('maps known HuggingFace names to Ollama tags', () => {
+    expect(buildPullName('meta-llama/Llama-3.2-3B', '3B', 'Q4_K_M')).toBe('llama3.2:3b')
   })
 
-  it('uses hyphens for multi-word model names', () => {
-    expect(buildPullName('DeepSeek Coder', '33B', 'Q4_K_M')).toBe('deepseek-coder')
+  it('maps known model with org prefix', () => {
+    expect(buildPullName('Qwen/Qwen2.5-3B-Instruct', '3B', 'Q4_K_M')).toBe('qwen2.5:3b')
   })
 
-  it('handles multi-word names with version numbers', () => {
-    expect(buildPullName('DeepSeek Coder V2', '16B', 'Q4_K_M')).toBe('deepseek-coder-v2')
+  it('falls back to stripping org and extracting size', () => {
+    expect(buildPullName('someorg/cool-model-7B', '7B', 'Q4_K_M')).toBe('cool-model:7b')
+  })
+
+  it('handles names without org prefix', () => {
+    expect(buildPullName('mistral-7b-instruct', '7B', 'Q4_K_M')).toBe('mistral:7b')
   })
 })
 
