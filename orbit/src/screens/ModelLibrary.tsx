@@ -6,7 +6,7 @@ import type { OllamaStatus } from '../types/ollama'
 import ModelCard from '../components/ModelCard'
 import OrbitPulse from '../components/OrbitPulse'
 
-type Filter = 'all' | 'chat' | 'code' | 'small' | 'medium' | 'large'
+type Filter = 'recommended' | 'installed' | 'all' | 'small' | 'medium' | 'large'
 
 type ModelLibraryProps = {
   models: Model[]
@@ -23,9 +23,9 @@ type ModelLibraryProps = {
 }
 
 const filters: { key: Filter; label: string }[] = [
+  { key: 'recommended', label: 'Recommended' },
+  { key: 'installed', label: 'Installed' },
   { key: 'all', label: 'All' },
-  { key: 'chat', label: 'Chat' },
-  { key: 'code', label: 'Code' },
   { key: 'small', label: '<5 GB' },
   { key: 'medium', label: '5-20 GB' },
   { key: 'large', label: '20 GB+' },
@@ -93,9 +93,10 @@ function matchesFilter(model: Model, filter: Filter): boolean {
   switch (filter) {
     case 'all':
       return true
-    case 'chat':
-    case 'code':
-      return model.categories.includes(filter)
+    case 'recommended':
+      return (model.fitLevel === 'perfect' || model.fitLevel === 'good') && !model.downloaded
+    case 'installed':
+      return model.downloaded
     case 'small':
       return parseSize(model.size) < 5
     case 'medium': {
